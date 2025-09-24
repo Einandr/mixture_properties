@@ -6,7 +6,7 @@ import yaml
 from matplotlib.patches import Polygon
 from decimal import Decimal
 
-import class_output_utils as ou
+from . import output as ou
 
 # Константы:
 R0 = 8.31

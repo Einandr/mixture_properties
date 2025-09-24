@@ -7,9 +7,9 @@ import scipy.integrate as integrate
 from scipy import interpolate
 import math
 import ast
-import class_terra_component as tc
-import class_mixture_component as dc
-import class_material as material
+import utils.terra_component as tc
+import utils.mixture_component as dc
+import utils.material as material
 import os
 import yaml
 import re
@@ -22,12 +22,13 @@ from pathlib import Path
 from configparser import ConfigParser
 
 
-path = r'D:\YASIM\VORON\2024_09_Reflected_Shock_Autoignition'
+path = r'D:\YASIM\VORON\2025_08_KEROSENE_PROPS'
 dir_run = 'RUN'
 dir_props_out = 'props_out'
 dir_soulution = 'solution'
 
-path_prop = r'D:\YASIM\VORON\2024_01_All_Discrete_Phase_Development\kosh\new_version'
+# path_prop = r'D:\YASIM\VORON\2024_01_All_Discrete_Phase_Development\kosh\new_version'
+path_prop = os.getcwd()
 file_props = 'props_full_database.txt'
 file_config = 'run_config.ini'
 file_MPL = 'MPL_constants.txt'

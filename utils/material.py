@@ -4,9 +4,9 @@ import pandas as pd
 import math
 import os
 
-import class_terra_component as tc
-import class_mixture_component as mc
-import class_output_utils as ou
+from . import terra_component as tc
+from . import mixture_component as mc
+from . import output as ou
 
 # Константы:
 # R0 = 8.31
