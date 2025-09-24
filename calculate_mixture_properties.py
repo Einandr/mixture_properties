@@ -7,9 +7,9 @@ import scipy.integrate as integrate
 from scipy import interpolate
 import math
 import ast
-import utils.terra_component as tc
-import utils.mixture_component as dc
-import utils.material as material
+from utils import component_terra as tc
+from utils import component_mixture as mc
+from utils import material
 import os
 import yaml
 import re
@@ -23,7 +23,7 @@ from configparser import ConfigParser
 
 
 path = r'D:\YASIM\VORON\2025_08_KEROSENE_PROPS'
-dir_run = 'RUN'
+dir_run = 'RUN_mixture_properties'
 dir_props_out = 'props_out'
 dir_soulution = 'solution'
 
@@ -64,20 +64,21 @@ g_KERO = {'C9H12': 0.132,
 
 
 
-gas_mixture_reference = {'O2': g_O2,
-                         'N2': g_N2,
-                         'CO2': g_CO2,
-                         'CO': g_CO,
-                         'H2O': g_H2O,
-                         'C6H14': g_C6H14,
-                         'C10H22': g_C10H22,
-                         'C6H6': g_C6H6,
-                         'C9H12': g_C9H12,
-                         'C9H18': g_C9H18,
-                         'BHD': g_BHD,
-                         'KERO': g_KERO,
-                         'C7H16': g_C7H16}
+# gas_mixture_reference = {'O2': g_O2,
+#                          'N2': g_N2,
+#                          'CO2': g_CO2,
+#                          'CO': g_CO,
+#                          'H2O': g_H2O,
+#                          'C6H14': g_C6H14,
+#                          'C10H22': g_C10H22,
+#                          'C6H6': g_C6H6,
+#                          'C9H12': g_C9H12,
+#                          'C9H18': g_C9H18,
+#                          'BHD': g_BHD,
+#                          'KERO': g_KERO,
+#                          'C7H16': g_C7H16}
 
+gas_mixture_reference = {'KERO': g_KERO}
 
 
 

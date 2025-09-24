@@ -4,8 +4,8 @@ import pandas as pd
 import math
 import os
 
-from . import terra_component as tc
-from . import mixture_component as mc
+from . import component_terra as tc
+from . import component_mixture as mc
 from . import output as ou
 
 # Константы:
@@ -84,9 +84,9 @@ class Material:
 
         self.dict_of_components = {}
         for mixture_name, mass_fractions_dict in self.mixture_reference.items():
-            mu = self.dict_of_constant_properties[mixture_name]['mu'][0]
-            rho = self.dict_of_constant_properties[mixture_name]['rho'][0]
-            dH0 = self.dict_of_constant_properties[mixture_name]['dH0'][0]
+            mu = self.dict_of_constant_properties[mixture_name]['mu'].iloc[0]
+            rho = self.dict_of_constant_properties[mixture_name]['rho'].iloc[0]
+            dH0 = self.dict_of_constant_properties[mixture_name]['dH0'].iloc[0]
             T_grid = self.dict_of_T_dependent_properties[mixture_name]['T [K]'].to_numpy()
             Cp_grid = self.dict_of_T_dependent_properties[mixture_name]['Cp [Дж/кг-К]'].to_numpy()
             H_grid = self.dict_of_T_dependent_properties[mixture_name]['H [Дж/кг]'].to_numpy()
