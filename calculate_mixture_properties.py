@@ -7,9 +7,6 @@ import scipy.integrate as integrate
 from scipy import interpolate
 import math
 import ast
-from utils import component_terra as tc
-from utils import component_mixture as mc
-from utils import material
 import os
 import yaml
 import re
@@ -20,16 +17,31 @@ from pprint import pprint
 from enum import Enum, auto
 from pathlib import Path
 from configparser import ConfigParser
+from dataclasses import dataclass
+from enum import Enum
+from typing import Dict, List, Set, Optional
+
+# USER IMPORTS
+from utils.generate_data_base import *
+from utils import initiate_kinetics as kin
+from utils import component_terra as tc
+from utils import component_mixture as mc
+from utils import material
 
 
 path = r'D:\YASIM\VORON\2025_08_KEROSENE_PROPS'
 dir_run = 'RUN_mixture_properties'
 dir_props_out = 'props_out'
-dir_soulution = 'solution'
+dir_solution = 'solution'
 
-# path_prop = r'D:\YASIM\VORON\2024_01_All_Discrete_Phase_Development\kosh\new_version'
-path_prop = os.getcwd()
-file_props = 'props_full_database.txt'
+path_data = ''.join((os.getcwd(), '\\', 'data'))
+terra_props = 'props_TERRA.txt'
+chemkin_path = 'ker_19_Dagautreduced_China_rp3'
+chemkin_thermo = 'ker_air_china_rp3_19sp.dat'
+chemkin_trans = 'ker_air_china_rp3_19sp.trans'
+chemkin_reactions = 'ker_air_china_rp3_19sp.inp'
+generate_new_chemkin_db = False
+
 file_config = 'run_config.ini'
 file_MPL = 'MPL_constants.txt'
 
@@ -39,28 +51,87 @@ Path(path_run).mkdir(parents=True, exist_ok=True)
 os.chdir(path_run)
 
 
-df_props = pd.read_csv(''.join((path_prop, '\\', file_props)), delimiter=' ', index_col='name')
-df_props['T_range'] = df_props['T_range'].apply(lambda x: np.fromstring(x.replace('\'', '').replace('\"', '').replace('\n', ''), dtype=float, sep=','))
-df_props['f_ranges'] = df_props['f_ranges'].apply(lambda x: np.array(ast.literal_eval(x.replace('\'', '').replace('\"', '').replace('\n', ''))))
+df_terra = pd.read_csv(''.join((path_data, '\\', terra_props)), delimiter=' ')
+df_terra['T_range'] = df_terra['T_range'].apply(lambda x: np.fromstring(x.replace('\'', '').replace('\"', '').replace('\n', ''), dtype=float, sep=','))
+df_terra['f_ranges'] = df_terra['f_ranges'].apply(lambda x: np.array(ast.literal_eval(x.replace('\'', '').replace('\"', '').replace('\n', ''))))
+
+df_terra.set_index(['name_brutto', 'name_isomer'], inplace=True)
 
 
-g_O2 = {'O2': 1}
-g_N2 = {'N2': 1}
-g_CO2 = {'CO2': 1}
-g_CO = {'CO': 1}
-g_H2O = {'H2O': 1}
-g_C6H14 = {'C6H14': 1}
-g_C10H22 = {'C10H22': 1}
-g_C6H6 = {'C6H6': 1}
-g_C7H16 = {'C7H16': 1}
-g_C9H12 = {'C9H12': 1}
-g_C9H18 = {'C9H18': 1}
-g_BHD = {'C6H14': 0.091,
-         'C10H22': 0.727,
-         'C6H6': 0.182}
-g_KERO = {'C9H12': 0.132,
-          'C10H22': 0.767,
-          'C9H18': 0.101}
+
+
+
+# Создаем файл базы данных в той же директории, где находится файл CHEMKIN THERMO
+if generate_new_chemkin_db:
+    generate_data_base(''.join((path_data, '\\', chemkin_path)), chemkin_thermo, ''.join((path_data, '\\', chemkin_path)), chemkin_thermo.replace('.dat', '.db'))
+
+
+
+
+
+
+
+
+
+
+
+
+class Source(Enum):
+    T = 0    # TERRA
+    C = 1    # CHEMKIN
+
+
+@dataclass
+class Component:
+    value: float
+    source: Source
+
+
+
+# g_O2 = {'O2': 1}
+# g_N2 = {'N2': 1}
+# g_CO2 = {'CO2': 1}
+# g_CO = {'CO': 1}
+# g_H2O = {'H2O': 1}
+# g_C6H14 = {'C6H14': 1}
+# g_C10H22 = {'C10H22': 1}
+# g_C6H6 = {'C6H6': 1}
+# g_C7H16 = {'C7H16': 1}
+# g_C9H12 = {'C9H12': 1}
+# g_C9H18 = {'C9H18': 1}
+# g_BHD = {'C6H14': 0.091,
+#          'C10H22': 0.727,
+#          'C6H6': 0.182}
+# g_KERO = {'C9H12': 0.132,
+#           'C10H22': 0.767,
+#           'C9H18': 0.101}
+
+
+
+g_O2 = {'O2': Component(1, Source.C)}
+g_N2 = {'N2': Component(1, Source.C)}
+g_CO2 = {'CO2': Component(1, Source.C)}
+g_CO = {'CO': Component(1, Source.T)}
+g_H2O = {'H2O': Component(1, Source.T)}
+g_C6H14 = {'C6H14': Component(1, Source.T)}
+g_C10H22 = {'C10H22': Component(1, Source.T)}
+g_C6H6 = {'C6H6': Component(1, Source.T)}
+g_C7H16 = {'C7H16': Component(1, Source.T)}
+g_C9H12 = {'C9H12': Component(1, Source.T)}
+g_C9H18 = {'C9H18': Component(1, Source.T)}
+
+g_BHD = {'C6H14': Component(0.091, Source.T),
+         'C10H22': Component(0.727, Source.T),
+         'C6H6': Component(0.182, Source.T)}
+
+
+g_KERO = {
+    'C9H12': Component(0.132, Source.T),
+    'NC10H22': Component(0.767, Source.C),
+    'C9H18': Component(0.101, Source.T)
+}
+
+
 
 
 
@@ -101,8 +172,61 @@ T_last = 6000
 dT = 100
 
 
+def check_source_conflicts(mixture: Dict) -> Dict[str, Set[Source]]:
+    component_sources = {}
+    for components_dict in mixture.values():
+        for component_name, component in components_dict.items():
+            if component_name not in component_sources:
+                component_sources[component_name] = set()
+            component_sources[component_name].add(component.source)
+    return component_sources
+
+
+def get_components_by_source(mixture: Dict, source: Source) -> List[str]:
+    components = []
+    component_sources = check_source_conflicts(mixture)
+    for component_name, sources in component_sources.items():
+        if source in sources and len(sources) == 1:
+            components.append(component_name)
+    return components
+
+
+# Проверка конфликтов
+component_sources = check_source_conflicts(gas_mixture_reference)
+conflicts = [
+    component_name
+    for component_name, sources in component_sources.items()
+    if len(sources) > 1
+]
+
+if conflicts:
+    print("Обнаружены конфликты источников для следующих компонентов:")
+    for conflict in conflicts:
+        print(f"- {conflict}: {component_sources[conflict]}")
+    raise ValueError("Обнаружены конфликты источников. Исправьте данные и повторите попытку.")
+
+# Составление списков
+components_with_source_C = get_components_by_source(gas_mixture_reference, Source.C)
+components_with_source_T = get_components_by_source(gas_mixture_reference, Source.T)
+
+print("Компоненты с источником CHEMKIN:")
+print(components_with_source_C)
+print("\nКомпоненты с источником TERRA:")
+print(components_with_source_T)
+
+
+
+
+
+
+# Инициализация химической кинетики
+components_chemkin = kin.initiate_kinetics(''.join((path_data, '\\', chemkin_path, '\\', chemkin_thermo.replace('.dat', '.db'))), components_with_source_C)
+
+
+
+
 # dispersed material initialization
-gas_material = material.Material(gas_mixture_reference, 'mat_gas', df_props, show_plots, True, T0, T_base, dT_phase_transition, T_first, T_last, dT)
+gas_material = material.Material(gas_mixture_reference, 'mat_gas', df_terra, show_plots, True, T0, T_base, dT_phase_transition, T_first, T_last, dT)
 
 
 
