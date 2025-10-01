@@ -1,5 +1,7 @@
 import yaml
 from pathlib import Path
+import os
+import numpy as np
 
 # USER IMPORTS
 from utils.generate_data_base import *
@@ -8,14 +10,13 @@ from utils import initiate_kinetics as kin
 
 
 
-path_data = ''.join((os.getcwd(), '\\', 'data', '\\', 'ker_19_Dagautreduced_China_rp3'))
+path_data = ''.join((os.getcwd(), '\\', 'data', '\\', 'ker_mixture'))
 
-dir_data = 'ker_19_Dagautreduced_China_rp3'
-file_thermo = 'ker_air_china_rp3_19sp.dat'
-file_reactions = 'ker_air_china_rp3_19sp.inp'
+chemkin_thermo = 'ker_mixture.dat'
+chemkin_reactions = 'ker_air_china_rp3_19sp.inp'
 
 dir_output = r'D:\YASIM\VORON\2025_08_KEROSENE_PROPS'
-file_db_output = 'therm_out.db'
+file_db_output = chemkin_thermo.replace('.dat', '.db')
 
 
 
@@ -27,10 +28,10 @@ generate_new_data_base = True
 
 # Создаем файл базы данных в той же директории, где находится файл CHEMKIN THERMO
 if generate_new_data_base:
-    generate_data_base(path_data, file_thermo, path_data, file_db_output)
+    generate_data_base(path_data, chemkin_thermo, path_data, file_db_output)
 
 # Инициализация химической кинетики
-get_species_names = kin.read_chemkin_file(''.join((path_data, '/', file_reactions)))
+get_species_names = kin.read_chemkin_file(''.join((path_data, '/', chemkin_reactions)))
 list_components = kin.initiate_kinetics(''.join((path_data, '/', file_db_output)), get_species_names)
 
 # test = list_components[0].formula

@@ -15,6 +15,7 @@ R0 = 8.31
 
 
 def initialize_terra_component(name, df_props, T0, T_base, dT_phase_transition, T_first, T_last, dT):
+    print('inside initialize_terra_component', name)
     if name in df_props.index:
         _mu = df_props['mu'][name]
         _rho = df_props['rho'][name]
@@ -24,6 +25,7 @@ def initialize_terra_component(name, df_props, T0, T_base, dT_phase_transition, 
         _dH0 = df_props['dH0'][name]
         _T_range = df_props['T_range'][name]
         _f_ranges = df_props['f_ranges'][name]
+        print(_mu)
         return Component(name, _mu, _rho, _sigma, _eps_dk, _delta, _dH0, _T_range, _f_ranges, T0, T_base, dT_phase_transition, T_first, T_last, dT)
     else:
         print('component with name ', name, ' not found in the database')

@@ -34,6 +34,7 @@ class Material:
         os.chdir(self.path_terra)
         for key, value in self.mixture_reference.items():
             for key2, value2 in value.items():
+                print(key2)
                 component = tc.initialize_terra_component(key2, self.df_props, self.T0, self.T_base, self.dT_phase_transition, self.T_first, self.T_last, self.dT)
                 if component.name not in self.component_names_list:
                     print('\nadding component with name ', component.name, '\n')
@@ -105,11 +106,11 @@ class Material:
 
     def get_mixture_Cp(self, mass_fractions_dict, T):
         result = 0
-        for key, value in mass_fractions_dict.items():
+        for key, component in mass_fractions_dict.items():
             for comp in self.components_list:
                 try:
                     if key == comp.name:
-                        result += comp.get_Cp(T) * value
+                        result += comp.get_Cp(T) * component.value
                 except ValueError:
                     print('no name for component ', comp)
                 continue
@@ -118,64 +119,64 @@ class Material:
 
     def get_mixture_viscosity(self, mass_fractions_dict, T):
         result = 0
-        for key, value in mass_fractions_dict.items():
+        for key, component in mass_fractions_dict.items():
             for comp in self.components_list:
                 if key == comp.name:
-                    result += comp.get_viscosity(T) * value
+                    result += comp.get_viscosity(T) * component.value
         return result
 
     def get_mixture_heat_conductivity(self, mass_fractions_dict, T):
         result = 0
-        for key, value in mass_fractions_dict.items():
+        for key, component in mass_fractions_dict.items():
             for comp in self.components_list:
                 if key == comp.name:
-                    result += comp.get_heat_conductivity(T) * value
+                    result += comp.get_heat_conductivity(T) * component.value
         return result
 
     def get_mixture_diffusivity(self, mass_fractions_dict, T):
         result = 0
-        for key, value in mass_fractions_dict.items():
+        for key, component in mass_fractions_dict.items():
             for comp in self.components_list:
                 if key == comp.name:
-                    result += comp.get_diffusivity(T) * value
+                    result += comp.get_diffusivity(T) * component.value
         return result
 
 
     def get_mixture_H(self, mass_fractions_dict, T):
         result = 0
-        for key, value in mass_fractions_dict.items():
+        for key, component in mass_fractions_dict.items():
             for comp in self.components_list:
                 if key == comp.name:
-                    result += comp.get_H(T) * value
+                    result += comp.get_H(T) * component.value
         return result
 
     def get_mixture_mu(self, mass_fractions_dict):
         result = 0
-        for key, value in mass_fractions_dict.items():
+        for key, component in mass_fractions_dict.items():
             for comp in self.components_list:
                 if key == comp.name:
                     # print('mixture components mu: ', key, comp.get_mu(), value)
-                    result += value / comp.get_mu()
+                    result += component.value / comp.get_mu()
         return 1 / result
 
     def get_mixture_rho(self, mass_fractions_dict):
         result = 0
         # prevent division by zero
         if not self.is_gas:
-            for key, value in mass_fractions_dict.items():
+            for key, component in mass_fractions_dict.items():
                 for comp in self.components_list:
                     if key == comp.name:
-                        result += value / comp.get_rho()
+                        result += component.value / comp.get_rho()
             return 1 / result
         else:
             return 0
 
     def get_mixture_dH0(self, mass_fractions_dict):
         result = 0
-        for key, value in mass_fractions_dict.items():
+        for key, component in mass_fractions_dict.items():
             for comp in self.components_list:
                 if key == comp.name:
-                    result += comp.get_dH0() * value
+                    result += comp.get_dH0() * component.value
         return result
 
     def __calculate_mixture_properties_Tdependent(self, mixture_name, mass_fractions_dict):

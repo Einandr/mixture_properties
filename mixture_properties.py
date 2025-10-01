@@ -36,10 +36,10 @@ dir_solution = 'solution'
 
 path_data = ''.join((os.getcwd(), '\\', 'data'))
 terra_props = 'props_TERRA.txt'
-chemkin_path = 'ker_19_Dagautreduced_China_rp3'
-chemkin_thermo = 'ker_air_china_rp3_19sp.dat'
-chemkin_trans = 'ker_air_china_rp3_19sp.trans'
-chemkin_reactions = 'ker_air_china_rp3_19sp.inp'
+chemkin_path = 'ker_mixture'
+chemkin_thermo = 'ker_mixture.dat'
+chemkin_trans = 'ker_mixture.trans'
+chemkin_reactions = 'ker_mixture.inp'
 generate_new_chemkin_db = False
 
 file_config = 'run_config.ini'
@@ -55,9 +55,10 @@ df_terra = pd.read_csv(''.join((path_data, '\\', terra_props)), delimiter=' ')
 df_terra['T_range'] = df_terra['T_range'].apply(lambda x: np.fromstring(x.replace('\'', '').replace('\"', '').replace('\n', ''), dtype=float, sep=','))
 df_terra['f_ranges'] = df_terra['f_ranges'].apply(lambda x: np.array(ast.literal_eval(x.replace('\'', '').replace('\"', '').replace('\n', ''))))
 
-df_terra.set_index(['name_brutto', 'name_isomer'], inplace=True)
-
-
+df_terra['name_isomer'] = df_terra['name_isomer'].fillna('')
+df_terra['name'] = df_terra['name_brutto'] + ' ' + df_terra['name_isomer']
+df_terra['name'] = df_terra['name'].str.strip()
+df_terra.set_index('name', inplace=True)
 
 
 
@@ -65,48 +66,14 @@ df_terra.set_index(['name_brutto', 'name_isomer'], inplace=True)
 if generate_new_chemkin_db:
     generate_data_base(''.join((path_data, '\\', chemkin_path)), chemkin_thermo, ''.join((path_data, '\\', chemkin_path)), chemkin_thermo.replace('.dat', '.db'))
 
-
-
-
-
-
-
-
-
-
-
-
 class Source(Enum):
     T = 0    # TERRA
     C = 1    # CHEMKIN
-
 
 @dataclass
 class Component:
     value: float
     source: Source
-
-
-
-# g_O2 = {'O2': 1}
-# g_N2 = {'N2': 1}
-# g_CO2 = {'CO2': 1}
-# g_CO = {'CO': 1}
-# g_H2O = {'H2O': 1}
-# g_C6H14 = {'C6H14': 1}
-# g_C10H22 = {'C10H22': 1}
-# g_C6H6 = {'C6H6': 1}
-# g_C7H16 = {'C7H16': 1}
-# g_C9H12 = {'C9H12': 1}
-# g_C9H18 = {'C9H18': 1}
-# g_BHD = {'C6H14': 0.091,
-#          'C10H22': 0.727,
-#          'C6H6': 0.182}
-# g_KERO = {'C9H12': 0.132,
-#           'C10H22': 0.767,
-#           'C9H18': 0.101}
-
-
 
 g_O2 = {'O2': Component(1, Source.C)}
 g_N2 = {'N2': Component(1, Source.C)}
@@ -126,9 +93,9 @@ g_BHD = {'C6H14': Component(0.091, Source.T),
 
 
 g_KERO = {
-    'C9H12': Component(0.132, Source.T),
-    'NC10H22': Component(0.767, Source.C),
-    'C9H18': Component(0.101, Source.T)
+    'C9H12 unknown': Component(0.132, Source.T),
+    'C10H22 n-Decane': Component(0.767, Source.T),
+    'C9H18 1-Nonene': Component(0.101, Source.T)
 }
 
 
