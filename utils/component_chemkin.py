@@ -10,23 +10,6 @@ import os
 R0 = 8.314       # [Дж / моль-К] универсальная газовая постоянная
 cal = 4184       # [кДж] термическая калория, используемая в Ansys Chemkin
 
-# T_base = 100     # [K] температура для вычисления Ср с целью сведения в единое значение полной энтальпии при расчете через коэффициенты и через интеграл
-
-# def initialize_mixture_component_dispersed(mixture_reference, name, T_base, mu, rho, dH0, T_grid, Cp_grid, H_grid):
-#     if name in mixture_reference.keys():
-#         return Component_Dispersed(name, T_base, mu, rho, dH0, T_grid, Cp_grid, H_grid)
-#     else:
-#         print('mixture dispersed component with name ', name, ' not defined')
-#         return None
-#
-#
-# def initialize_mixture_component_gas(mixture_reference, name, T_base, mu, rho, dH0, T_grid, Cp_grid, H_grid, viscosity_grid, heat_conductivity_grid, diffusivity_grid):
-#     if name in mixture_reference.keys():
-#         return Component_Gas(name, T_base, mu, rho, dH0, T_grid, Cp_grid, H_grid, viscosity_grid, heat_conductivity_grid, diffusivity_grid)
-#     else:
-#         print('mixture gas component with name ', name, ' not defined')
-#         return None
-
 
 class Component:
     def __init__(self, name, date, formula, phase, T_low, T_mid, T_high, atomic, a1_low, a2_low, a3_low, a4_low, a5_low, a6_low, a7_low, a1_high, a2_high, a3_high, a4_high, a5_high, a6_high, a7_high, dT, T_base, T0):
@@ -62,7 +45,8 @@ class Component:
         self.path_chemkin = 'chemkin'
 
         self.dH0 = self.H0_298_J()
-        self.T_grid = np.arange(self.T_low, self.T_high + self.dT, self.dT)
+        # self.T_grid = np.arange(self.T_low, self.T_high + self.dT, self.dT)
+        self.T_grid = self.create_T_grid()
         self.Cp_Tbase = self.calculate_Cp_T_base()
         print('T_low, T_mid T_high, dT', self.T_low, self.T_mid, self.T_high, self.dT)
         print('self T_grid', self.T_grid)
@@ -84,7 +68,6 @@ class Component:
         self.eps_dk = 100
         self.delta = 0
 
-
         self.columns_mix = ['T [K]', 'Cp [Дж/кг-К]', 'H [Дж/кг]', 'Mu_visc [kg/m-s]', 'Lambda [W/m-K]', 'D [m^2/s]']
         self.vector_viscosity = np.vectorize(self._viscosity_kinetic_theory)
         self.viscosity_grid = self.vector_viscosity(T=self.T_grid)
@@ -103,6 +86,20 @@ class Component:
         self.data.to_excel(self.writer, index=False, sheet_name='props')
         self.writer.close()
         os.chdir('..')
+
+    def create_T_grid(self):
+        rounded_T_low = math.ceil(self.T_low / 100) * 100       # Округляем T_low до ближайшего целого, кратного 100, но не меньше T_low
+        if rounded_T_low < self.T_low:
+            rounded_T_low += 100
+        T_grid = np.arange(rounded_T_low, self.T_high + self.dT, self.dT)   # Создаем массив температур, начиная с rounded_T_low и заканчивая T_high
+        print('before deletion T_low:', T_grid)
+        T_grid = T_grid[1:]                                     # Удаляем первое значение - это либо T_low, либо rounded_T_low
+        T_grid = np.insert(T_grid, 0, self.T_low)               # Добавляем обратно T_low
+        T_grid = T_grid[T_grid <= self.T_high]                  # Убедимся, что значения не превышают T_high
+        if T_grid[-1] != self.T_high:                           # Проверяем, содержится ли T_high в массиве T_grid
+            T_grid = np.append(T_grid, self.T_high)
+        print('after checking T_grid:', T_grid)
+        return T_grid
 
     def interpolated_value(self, x, x0, x1, y0, y1):
         # print('interpolating', x, x0, x1, y0, y1)

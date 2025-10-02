@@ -68,6 +68,7 @@ def output_props(name, is_gas, T_base, df):
     props_for_yaml = props.copy()
     for key, value in props_for_yaml.items():
         df_for_dict = pd.DataFrame(columns=[T_header, value])
+        rarefy_output = False
 
         if value == 'Cp [Дж/кг-К]':
             # if we want float precision:
@@ -93,7 +94,7 @@ def output_props(name, is_gas, T_base, df):
                     break
             df_for_dict.drop(ind_for_drop, inplace=True)
             print('ind_for_drop:', ind_for_drop)
-            if is_gas:
+            if rarefy_output and is_gas:
                 ind_for_drop2 = []
                 for ind, row in df_for_dict[::-1].itertuples():
                     # rarefy - only for gas - BE CAREFUL NOT TO DELETE PHASE TRANSITION DATA
@@ -115,10 +116,11 @@ def output_props(name, is_gas, T_base, df):
             df_for_dict.drop(df_for_dict[df_for_dict.index < T_base].index, inplace=True)
             # RAREFY heat_capacity viscosity heat_conductivity diffusivity
             ind_for_drop = []
-            for ind, row in df_for_dict[::-1].itertuples():
-                # print(ind, row)
-                if ind % 100 != 0:
-                    ind_for_drop.append(ind)
+            if rarefy_output:
+                for ind, row in df_for_dict[::-1].itertuples():
+                    # print(ind, row)
+                    if ind % 100 != 0:
+                        ind_for_drop.append(ind)
             df_for_dict.drop(ind_for_drop, inplace=True)
             # return_df_for_dict = df_for_dict.copy()
             print('rarefied df for dict: ', df_for_dict)

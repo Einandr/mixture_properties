@@ -44,10 +44,17 @@ class Material:
         self.path_terra = 'terra'
         os.makedirs(self.path_terra, exist_ok=True)
         os.chdir(self.path_terra)
+        self.T_component_max = float('inf')
         for comp in self.components:  # Добавляем точки температуры из компонент CHEMKIN
             self.T_grid_mixture_nonunique.extend(comp.T_grid)
+            if hasattr(comp, 'T_grid') and len(comp.T_grid) > 0:
+                current_max = max(comp.T_grid)
+                if current_max < self.T_component_max:
+                    self.T_component_max = current_max
 
-
+        # Добавляем компоненты из источников Терра. При этом они тут же инициализируются с данными до температуры T_last.
+        # Поэтому по ним нам можно не делать проверку на T_component_max.
+        # Возможно было бы неплохо предусмотреть в случае T_component_max < T_last ограничиться T_last, пока непонятно надо ли.
 
         for key, value in self.mixture_reference.items():
             for key2, in_component in value.items():
@@ -64,16 +71,27 @@ class Material:
                     # component = cc.initialize_chemkin_component(key2, self.df_terra, self.T0, self.T_base, self.dT_phase_transition, self.T_first, self.T_last, self.dT)
                     # self.T_grid_mixture_nonunique.extend()
 
-
-
-
-
-
         print('CLASS material components names list:', self.component_terra_names_list)
 
         for c in self.components:
             print(c.name)
-        self.T_grid = pd.Series(self.T_grid_mixture_nonunique).drop_duplicates().sort_values(ascending=True).tolist()
+
+        # Отфильтровываем значения, превышающие T_component_max, если это газ.
+        # Пока задумка такая, что для твердых тел в основном будет TERRA источник, а там часто полиномы вразнобой, но нам это не мешает,
+        # так как инициализация терра-компонент идет внутри, мы спокойно получаем данные до T_last
+        if self.is_gas:
+            print('filtering for gas for T_component_max = ', self.T_component_max)
+            filtered_T_grid = [T for T in self.T_grid_mixture_nonunique if T <= self.T_component_max]
+            self.T_grid = pd.Series(filtered_T_grid).drop_duplicates().sort_values(ascending=True).tolist()
+        else:
+            self.T_grid = pd.Series(self.T_grid_mixture_nonunique).drop_duplicates().sort_values(ascending=True).tolist()
+        # Удаляем ближайшее справа значение от T0, если оно слишком близко
+        if self.T0 in self.T_grid:
+            index_T0 = self.T_grid.index(self.T0)
+            if index_T0 + 1 < len(self.T_grid) and abs(self.T_grid[index_T0 + 1] - self.T0) < self.dT / 2:
+                del self.T_grid[index_T0 + 1]
+
+
         # for objects of class Terra Component
         self.vector_get_mixture_Cp = np.vectorize(self.get_mixture_Cp, excluded=['mass_fractions_dict'])
         self.vector_get_mixture_H = np.vectorize(self.get_mixture_H, excluded=['mass_fractions_dict'])
@@ -132,7 +150,7 @@ class Material:
 
         os.chdir('..')
 
-    # МЕТОДЫ будут вызывать в зависимости от типа компонента - терра либо чемкин, соответствующие внутренние методы компонента с одинаковыми названиями
+    # МЕТОДЫ будут вызывать в зависимости от типа компонента - терра либо чемкин, соответствующие внутренние методы компонента - с одинаковыми названиями
     def get_mixture_Cp(self, mass_fractions_dict, T):
         result = 0
         for key, component in mass_fractions_dict.items():

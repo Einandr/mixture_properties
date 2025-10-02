@@ -40,7 +40,7 @@ chemkin_path = 'ker_mixture'
 chemkin_thermo = 'ker_mixture.dat'
 chemkin_trans = 'ker_mixture.trans'
 chemkin_reactions = 'ker_mixture.inp'
-generate_new_chemkin_db = True
+generate_new_chemkin_db = False
 
 file_config = 'run_config.ini'
 file_MPL = 'MPL_constants.txt'
@@ -84,13 +84,13 @@ g_BHD = {'C6H14': material.Component(0.091, material.Source.T),
          'C6H6': material.Component(0.182, material.Source.T)}
 
 
-# g_KERO = {
-#     'C9H12  C(CH=CH2)': material.Component(0.132, material.Source.C),
-#     'C10H22 n-Decane': material.Component(0.767, material.Source.C),
-#     'C9H18 1-Nonene': material.Component(0.101, material.Source.C)
-# }
+g_KERO = {
+    'C9H12  C(CH=CH2)': material.Component(0.132, material.Source.C),
+    'C10H22 n-Decane': material.Component(0.767, material.Source.C),
+    'C9H18 1-Nonene': material.Component(0.101, material.Source.C)
+}
 
-g_KERO = {'C10H20 KERO': material.Component(1, material.Source.C)}
+# g_KERO = {'C10H20 KERO': material.Component(1, material.Source.C)}
 
 
 # 'C10H20 KERO'
