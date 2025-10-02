@@ -3,24 +3,36 @@ import numpy as np
 import pandas as pd
 import math
 import os
+from enum import Enum
+from dataclasses import dataclass
 
 from . import component_terra as tc
+from . import component_chemkin as cc
 from . import component_mixture as mc
 from . import output as ou
 
 # Константы:
 # R0 = 8.31
 
+class Source(Enum):
+    T = 0    # TERRA
+    C = 1    # CHEMKIN
+
+@dataclass
+class Component:
+    value: float
+    source: Source
 
 
 class Material:
-    def __init__(self, mixture_reference, output_file_name, df_props, show_plots, is_gas, T0, T_base, dT_phase_transition, T_first, T_last, dT):
+    def __init__(self, mixture_reference, output_file_name, df_terra, components_chemkin, show_plots, is_gas, T0, T_base, dT_phase_transition, T_first, T_last, dT):
         self.mixture_reference = mixture_reference
         self.output_file_name = output_file_name
         self.T_grid_mixture_nonunique = []
-        self.components_list = []
-        self.component_names_list = []
-        self.df_props = df_props
+        self.components = components_chemkin        # Объединенный список компонентов CHEMKIN и TERRA
+        self.component_terra_names_list = []
+        self.df_terra = df_terra
+        # self.components_chemkin = components_chemkin
         self.show_plots = show_plots
         self.is_gas = is_gas
         self.T0 = T0
@@ -33,17 +45,25 @@ class Material:
         os.makedirs(self.path_terra, exist_ok=True)
         os.chdir(self.path_terra)
         for key, value in self.mixture_reference.items():
-            for key2, value2 in value.items():
-                print(key2)
-                component = tc.initialize_terra_component(key2, self.df_props, self.T0, self.T_base, self.dT_phase_transition, self.T_first, self.T_last, self.dT)
-                if component.name not in self.component_names_list:
-                    print('\nadding component with name ', component.name, '\n')
-                    self.components_list.append(component)
-                    self.component_names_list.append(component.name)
-                    self.T_grid_mixture_nonunique.extend(tc.show_properties_of_component(component, self.show_plots,  self.T_base))
-        print('CLASS material components names list:', self.component_names_list)
+            for key2, in_component in value.items():
+                print('inside material key2 is:', key2)
+                print('inside material in_component is:', in_component)
+                if in_component.source == Source.T:
+                    component = tc.initialize_terra_component(key2, self.df_terra, self.T0, self.T_base, self.dT_phase_transition, self.T_first, self.T_last, self.dT)
+                    if component.name not in self.component_terra_names_list:
+                        print('\nadding component with name ', component.name, '\n')
+                        self.components.append(component)
+                        self.component_terra_names_list.append(component.name)
+                        self.T_grid_mixture_nonunique.extend(tc.show_properties_of_component(component, self.show_plots,  self.T_base))
+                # elif in_component.source == Source.C:
+                #     component = cc.initialize_chemkin_component(key2, self.df_terra, self.T0, self.T_base, self.dT_phase_transition, self.T_first, self.T_last, self.dT)
 
-        for c in self.components_list:
+
+
+
+        print('CLASS material components names list:', self.component_terra_names_list)
+
+        for c in self.components:
             print(c.name)
         self.T_grid = pd.Series(self.T_grid_mixture_nonunique).drop_duplicates().sort_values(ascending=True).tolist()
         # for objects of class Terra Component
@@ -97,17 +117,18 @@ class Material:
             else:
                 viscosity_grid = self.dict_of_T_dependent_properties[mixture_name]['Mu_visc [kg/m-s]'].to_numpy()
                 heat_conductivity_grid = self.dict_of_T_dependent_properties[mixture_name]['Lambda [W/m-K]'].to_numpy()
-                diffusivity_grid =  self.dict_of_T_dependent_properties[mixture_name]['D [m^2/s]'].to_numpy()
+                diffusivity_grid = self.dict_of_T_dependent_properties[mixture_name]['D [m^2/s]'].to_numpy()
                 mixture_component = mc.initialize_mixture_component_gas(mixture_reference, mixture_name, self.T_base, mu, rho, dH0, T_grid, Cp_grid, H_grid, viscosity_grid, heat_conductivity_grid, diffusivity_grid)
                 self.dict_of_components[mixture_name] = mixture_component
 
 
         os.chdir('..')
 
+    # МЕТОДЫ будут вызывать в зависимости от типа компонента - терра либо чемкин, соответствующие внутренние методы компонента с одинаковыми названиями
     def get_mixture_Cp(self, mass_fractions_dict, T):
         result = 0
         for key, component in mass_fractions_dict.items():
-            for comp in self.components_list:
+            for comp in self.components:
                 try:
                     if key == comp.name:
                         result += comp.get_Cp(T) * component.value
@@ -120,7 +141,7 @@ class Material:
     def get_mixture_viscosity(self, mass_fractions_dict, T):
         result = 0
         for key, component in mass_fractions_dict.items():
-            for comp in self.components_list:
+            for comp in self.components:
                 if key == comp.name:
                     result += comp.get_viscosity(T) * component.value
         return result
@@ -128,7 +149,7 @@ class Material:
     def get_mixture_heat_conductivity(self, mass_fractions_dict, T):
         result = 0
         for key, component in mass_fractions_dict.items():
-            for comp in self.components_list:
+            for comp in self.components:
                 if key == comp.name:
                     result += comp.get_heat_conductivity(T) * component.value
         return result
@@ -136,7 +157,7 @@ class Material:
     def get_mixture_diffusivity(self, mass_fractions_dict, T):
         result = 0
         for key, component in mass_fractions_dict.items():
-            for comp in self.components_list:
+            for comp in self.components:
                 if key == comp.name:
                     result += comp.get_diffusivity(T) * component.value
         return result
@@ -145,7 +166,7 @@ class Material:
     def get_mixture_H(self, mass_fractions_dict, T):
         result = 0
         for key, component in mass_fractions_dict.items():
-            for comp in self.components_list:
+            for comp in self.components:
                 if key == comp.name:
                     result += comp.get_H(T) * component.value
         return result
@@ -153,7 +174,7 @@ class Material:
     def get_mixture_mu(self, mass_fractions_dict):
         result = 0
         for key, component in mass_fractions_dict.items():
-            for comp in self.components_list:
+            for comp in self.components:
                 if key == comp.name:
                     # print('mixture components mu: ', key, comp.get_mu(), value)
                     result += component.value / comp.get_mu()
@@ -164,7 +185,7 @@ class Material:
         # prevent division by zero
         if not self.is_gas:
             for key, component in mass_fractions_dict.items():
-                for comp in self.components_list:
+                for comp in self.components:
                     if key == comp.name:
                         result += component.value / comp.get_rho()
             return 1 / result
@@ -174,7 +195,7 @@ class Material:
     def get_mixture_dH0(self, mass_fractions_dict):
         result = 0
         for key, component in mass_fractions_dict.items():
-            for comp in self.components_list:
+            for comp in self.components:
                 if key == comp.name:
                     result += comp.get_dH0() * component.value
         return result

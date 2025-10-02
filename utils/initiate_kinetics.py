@@ -60,24 +60,38 @@ def initiate_kinetics(path_db, components_names):
         if not row:
             raise ValueError(f"Компонент {name} не найден в базе данных")
 
-        # Извлекаем данные из строки
-        (
-            name, date, formula, phase, atomic,
-            t_low, t_mid, t_high,
-            a1_low, a2_low, a3_low, a4_low, a5_low, a6_low, a7_low,
-            a1_high, a2_high, a3_high, a4_high, a5_high, a6_high, a7_high
-        ) = row
+        # Получаем описание столбцов
+        columns = [desc[0] for desc in cursor.description]
 
-        # Преобразуем числовые значения из строк в float
-        t_low = float(t_low)
-        t_mid = float(t_mid)
-        t_high = float(t_high)
+        # Создаем словарь для сопоставления имен столбцов с их индексами
+        column_indices = {column: index for index, column in enumerate(columns)}
 
-        a_low = [float(a1_low), float(a2_low), float(a3_low), float(a4_low),
-                 float(a5_low), float(a6_low), float(a7_low)]
-        a_high = [float(a1_high), float(a2_high), float(a3_high), float(a4_high),
-                  float(a5_high), float(a6_high), float(a7_high)]
+        # Извлекаем данные из строки по именам столбцов
+        name = row[column_indices['name']]
+        date = row[column_indices['date']]
+        formula = row[column_indices['formula']]
+        phase = row[column_indices['phase']]
+        t_low = float(row[column_indices['t_low']])
+        t_mid = float(row[column_indices['t_mid']])
+        t_high = float(row[column_indices['t_high']])
+        a1_low = float(row[column_indices['a1_low']])
+        a2_low = float(row[column_indices['a2_low']])
+        a3_low = float(row[column_indices['a3_low']])
+        a4_low = float(row[column_indices['a4_low']])
+        a5_low = float(row[column_indices['a5_low']])
+        a6_low = float(row[column_indices['a6_low']])
+        a7_low = float(row[column_indices['a7_low']])
+        a1_high = float(row[column_indices['a1_high']])
+        a2_high = float(row[column_indices['a2_high']])
+        a3_high = float(row[column_indices['a3_high']])
+        a4_high = float(row[column_indices['a4_high']])
+        a5_high = float(row[column_indices['a5_high']])
+        a6_high = float(row[column_indices['a6_high']])
+        a7_high = float(row[column_indices['a7_high']])
+        atomic = row[column_indices['atomic']]
 
+        print('check kinetics initiate: name, date, formula, phase, atomic, t_low, t_mid, t_high, a1_low, a2_low, a3_low, a4_low, a5_low, a6_low, a7_low, a1_high, a2_high, a3_high, a4_high, a5_high, a6_high, a7_high',
+              name, date, formula, phase, atomic, t_low, t_mid, t_high, a1_low, a2_low, a3_low, a4_low, a5_low, a6_low, a7_low, a1_high, a2_high, a3_high, a4_high, a5_high, a6_high, a7_high)
         # Создаем объект Component
         list_components.append(
             Component(
@@ -89,20 +103,20 @@ def initiate_kinetics(path_db, components_names):
                 T_mid=t_mid,
                 T_high=t_high,
                 atomic=atomic,
-                a1_low=a_low[0],
-                a2_low=a_low[1],
-                a3_low=a_low[2],
-                a4_low=a_low[3],
-                a5_low=a_low[4],
-                a6_low=a_low[5],
-                a7_low=a_low[6],
-                a1_high=a_high[0],
-                a2_high=a_high[1],
-                a3_high=a_high[2],
-                a4_high=a_high[3],
-                a5_high=a_high[4],
-                a6_high=a_high[5],
-                a7_high=a_high[6],
+                a1_low=a1_low,
+                a2_low=a2_low,
+                a3_low=a3_low,
+                a4_low=a4_low,
+                a5_low=a5_low,
+                a6_low=a6_low,
+                a7_low=a7_low,
+                a1_high=a1_high,
+                a2_high=a2_high,
+                a3_high=a3_high,
+                a4_high=a4_high,
+                a5_high=a5_high,
+                a6_high=a6_high,
+                a7_high=a7_high,
                 dT=200,         # [K] температурная дельта
                 T_base=100,     # [K] температура начала таблицы
                 T0=298.15       # [K] температура для вычисления энтальпии образования
@@ -237,4 +251,5 @@ def initiate_kinetics(path_db, components_names):
     #     list_components.append(Component(TC.name, TC.date, TC.formula, TC.phase, TC.T_range[0], TC.T_range[1], TC.T_range[2], TC.atomic, TC.a_low[0], TC.a_low[1], TC.a_low[2], TC.a_low[3], TC.a_low[4], TC.a_low[5], TC.a_low[6], TC.a_high[0], TC.a_high[1], TC.a_high[2], TC.a_high[3], TC.a_high[4], TC.a_high[5], TC.a_high[6], dT, T_base, T0))
 
     print('Components names in CHEMKIN order: ', components_names)
+    conn.close()
     return list_components

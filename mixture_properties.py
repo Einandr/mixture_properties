@@ -66,36 +66,28 @@ df_terra.set_index('name', inplace=True)
 if generate_new_chemkin_db:
     generate_data_base(''.join((path_data, '\\', chemkin_path)), chemkin_thermo, ''.join((path_data, '\\', chemkin_path)), chemkin_thermo.replace('.dat', '.db'))
 
-class Source(Enum):
-    T = 0    # TERRA
-    C = 1    # CHEMKIN
 
-@dataclass
-class Component:
-    value: float
-    source: Source
+g_O2 = {'O2': material.Component(1, material.Source.C)}
+g_N2 = {'N2': material.Component(1, material.Source.C)}
+g_CO2 = {'CO2': material.Component(1, material.Source.C)}
+g_CO = {'CO': material.Component(1, material.Source.T)}
+g_H2O = {'H2O': material.Component(1, material.Source.T)}
+g_C6H14 = {'C6H14': material.Component(1, material.Source.T)}
+g_C10H22 = {'C10H22': material.Component(1, material.Source.T)}
+g_C6H6 = {'C6H6': material.Component(1, material.Source.T)}
+g_C7H16 = {'C7H16': material.Component(1, material.Source.T)}
+g_C9H12 = {'C9H12': material.Component(1, material.Source.T)}
+g_C9H18 = {'C9H18': material.Component(1, material.Source.T)}
 
-g_O2 = {'O2': Component(1, Source.C)}
-g_N2 = {'N2': Component(1, Source.C)}
-g_CO2 = {'CO2': Component(1, Source.C)}
-g_CO = {'CO': Component(1, Source.T)}
-g_H2O = {'H2O': Component(1, Source.T)}
-g_C6H14 = {'C6H14': Component(1, Source.T)}
-g_C10H22 = {'C10H22': Component(1, Source.T)}
-g_C6H6 = {'C6H6': Component(1, Source.T)}
-g_C7H16 = {'C7H16': Component(1, Source.T)}
-g_C9H12 = {'C9H12': Component(1, Source.T)}
-g_C9H18 = {'C9H18': Component(1, Source.T)}
-
-g_BHD = {'C6H14': Component(0.091, Source.T),
-         'C10H22': Component(0.727, Source.T),
-         'C6H6': Component(0.182, Source.T)}
+g_BHD = {'C6H14': material.Component(0.091, material.Source.T),
+         'C10H22': material.Component(0.727, material.Source.T),
+         'C6H6': material.Component(0.182, material.Source.T)}
 
 
 g_KERO = {
-    'C9H12 unknown': Component(0.132, Source.T),
-    'C10H22 n-Decane': Component(0.767, Source.T),
-    'C9H18 1-Nonene': Component(0.101, Source.T)
+    'C9H12 unknown': material.Component(0.132, material.Source.T),
+    'C10H22 n-Decane': material.Component(0.767, material.Source.C),
+    'C9H18 1-Nonene': material.Component(0.101, material.Source.C)
 }
 
 
@@ -139,7 +131,7 @@ T_last = 6000
 dT = 100
 
 
-def check_source_conflicts(mixture: Dict) -> Dict[str, Set[Source]]:
+def check_source_conflicts(mixture: Dict) -> Dict[str, Set[material.Source]]:
     component_sources = {}
     for components_dict in mixture.values():
         for component_name, component in components_dict.items():
@@ -149,7 +141,7 @@ def check_source_conflicts(mixture: Dict) -> Dict[str, Set[Source]]:
     return component_sources
 
 
-def get_components_by_source(mixture: Dict, source: Source) -> List[str]:
+def get_components_by_source(mixture: Dict, source: material.Source) -> List[str]:
     components = []
     component_sources = check_source_conflicts(mixture)
     for component_name, sources in component_sources.items():
@@ -173,8 +165,8 @@ if conflicts:
     raise ValueError("Обнаружены конфликты источников. Исправьте данные и повторите попытку.")
 
 # Составление списков
-components_with_source_C = get_components_by_source(gas_mixture_reference, Source.C)
-components_with_source_T = get_components_by_source(gas_mixture_reference, Source.T)
+components_with_source_C = get_components_by_source(gas_mixture_reference, material.Source.C)
+components_with_source_T = get_components_by_source(gas_mixture_reference, material.Source.T)
 
 print("Компоненты с источником CHEMKIN:")
 print(components_with_source_C)
@@ -193,7 +185,7 @@ components_chemkin = kin.initiate_kinetics(''.join((path_data, '\\', chemkin_pat
 
 
 # dispersed material initialization
-gas_material = material.Material(gas_mixture_reference, 'mat_gas', df_terra, show_plots, True, T0, T_base, dT_phase_transition, T_first, T_last, dT)
+gas_material = material.Material(gas_mixture_reference, 'mat_gas', df_terra, components_chemkin, show_plots, True, T0, T_base, dT_phase_transition, T_first, T_last, dT)
 
 
 

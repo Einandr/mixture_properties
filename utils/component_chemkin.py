@@ -4,6 +4,7 @@ import pandas as pd
 from mendeleev import element
 import re
 import math
+import os
 
 # Константы:
 R0 = 8.314       # [Дж / моль-К] универсальная газовая постоянная
@@ -56,24 +57,53 @@ class Component:
             self.moles = float(self.sp_moles[ind])
             self.mu += self.el.atomic_weight * self.moles
         self.R = R0 / self.mu * 1000                                        # [Дж/(кг-К)]
+        self.path_chemkin = 'chemkin'
 
+        self.dH0 = self.H0_298_J()
         self.T_grid = np.arange(self.T_low, self.T_high + self.dT, self.dT)
+        self.Cp_Tbase = self.calculate_Cp_T_base()
+        print('T_low, T_mid T_high, dT', self.T_low, self.T_mid, self.T_high, self.dT)
+        print('self T_grid', self.T_grid)
         self.update_T_grid()
+        print('T_bsase, T_mid:', self.T_base, self.T_mid)
+        print('self T_grid', self.T_grid)
 
         self.vector_Cp = np.vectorize(self.Cp, excluded=['units'])
         self.Cp_grid = self.vector_Cp(T=self.T_grid, units='J_kg_K')
+        print('self Cp_grid', self.Cp_grid)
+
+        self.H_grid = np.zeros(shape=(len(self.T_grid)))
+        self.update_H_grid()
+        print('self H_grid', self.H_grid)
+
+        self.rho = 0    # Заглушка для газа
+        # Значения по умолчанию для воздуха для транспортных свойств
+        self.sigma = 4
+        self.eps_dk = 100
+        self.delta = 0
 
 
+        self.columns_mix = ['T [K]', 'Cp [Дж/кг-К]', 'H [Дж/кг]', 'Mu_visc [kg/m-s]', 'Lambda [W/m-K]', 'D [m^2/s]']
+        self.vector_viscosity = np.vectorize(self._viscosity_kinetic_theory)
+        self.viscosity_grid = self.vector_viscosity(T=self.T_grid)
+        self.vector_heat_conductivity = np.vectorize(self._heat_conductivity_kinetic_theory)
+        self.heat_conductivity_grid = self.vector_heat_conductivity(T=self.T_grid)
+        self.vector_diffusivity = np.vectorize(self._diffusivity_kinetic_theory)
+        self.diffusivity_grid = self.vector_diffusivity(T=self.T_grid)
+        self.data = pd.DataFrame(data=np.array([self.T_grid, self.Cp_grid, self.H_grid, self.viscosity_grid, self.heat_conductivity_grid, self.diffusivity_grid]).transpose(), index=self.T_grid, columns=self.columns_mix)
+        print('gas component ', name, ' is initialized')
+        print(self.data)
 
-
-        # self.rho = rho
-        # self.dH0 = dH0
-        # self.T_base = T_base
-        # self.T_grid = T_grid
-        # self.Cp_grid = Cp_grid
-        # self.H_grid = H_grid
+        os.makedirs(self.path_chemkin, exist_ok=True)
+        os.chdir(self.path_chemkin)
+        # self.data.drop(index=0, inplace=True)
+        self.writer = pd.ExcelWriter(''.join(('out_', self.name, '.xlsx')), engine="xlsxwriter")
+        self.data.to_excel(self.writer, index=False, sheet_name='props')
+        self.writer.close()
+        os.chdir('..')
 
     def interpolated_value(self, x, x0, x1, y0, y1):
+        print('interpolating', x, x0, x1, y0, y1)
         return y0 + (y1 - y0) / (x1 - x0) * (x - x0)
 
     def get_value_from_grid(self, T, grid):
@@ -118,8 +148,13 @@ class Component:
     def H0_298_J(self):
         return self.H0_298_kcal_mole() * self.R
 
+    def calculate_Cp_T_base(self):
+        Cp_298 = self.Cp(self.T0, 'J_kg_K')
+        H_298 = self.H0_298_J()
+        Cp_T_base = (H_298 - Cp_298*(self.T0-self.T_base)/2) / (self.T_base + (self.T0-self.T_base)/2)
+        return Cp_T_base
+
     def Cp(self, T, units):         # Эта функция используется для заполнения массива по запрашиваемой температуре
-        # TODO добавить вычисление для Т_base 100К чтобы свести к одинаковому значению полные энтальпии при вычислении через коэффициенты и через интеграл Ср
         i = 0
         n_max = len(self.T_range) - 1
         n = 0
@@ -134,6 +169,18 @@ class Component:
             T = self.T_range[n_max]
         elif T <= self.T_range[0]:
             T = self.T_range[0]
+
+        elif T <= self.T_range[0]:
+            if T <= self.T_base:
+                return self.Cp_Tbase
+            if T > self.T_base:
+                if units == 'kcal_mole':
+                    Cp_T_range0 =  self._Cp_kcal_mole(T, self.a[i, 0], self.a[i, 1], self.a[i, 2], self.a[i, 3], self.a[i, 4])
+                elif units == 'J_kg_K':
+                    Cp_T_range0 = self._Cp_J_kg_K(T, self.a[i, 0], self.a[i, 1], self.a[i, 2], self.a[i, 3], self.a[i, 4])
+                else:
+                    raise ValueError('неверные единицы измерения Ср')
+                return self.interpolated_value(T, self.T_base, self.T0, self.Cp_Tbase, Cp_T_range0)
         if units == 'kcal_mole':
             return self._Cp_kcal_mole(T, self.a[i, 0], self.a[i, 1], self.a[i, 2], self.a[i, 3], self.a[i, 4])
         elif units == 'J_kg_K':
@@ -142,110 +189,92 @@ class Component:
             raise ValueError('неверные единицы измерения Ср')
 
     def update_T_grid(self):
-        # TODO добавить Т_base 100К
-        self.T_grid = np.append(self.T_grid, self.T_mid)
+        self.T_grid = np.append(self.T_grid, [self.T_mid, self.T_base])
         self.T_grid = np.unique(self.T_grid)
+        self.T_grid.sort()
+        return None
+
+    def update_H_grid(self):
+        H_prev = 0
+        for i, value in enumerate(self.H_grid):
+            if i == 0:
+                dH = self.Cp_grid[i]*self.T_grid[i]
+            else:
+                Cp_prev = self.Cp_grid[i-1]
+                Cp_cur = self.Cp_grid[i]
+                Cp_mean = (Cp_prev + Cp_cur)/2
+                dT = self.T_grid[i] - self.T_grid[i-1]
+                dH = Cp_mean*dT
+            H_current = H_prev + dH
+            self.H_grid[i] = H_current
+            H_prev = H_current
         return None
 
 
+    # KINETIC THEORY PARAMETERS CALCULATION: (ДУБЛИРОВАНИЕ COMPONENT_TERRA)
+
+    # reference temperature for diffusivity
+    def _T_D(self, T):
+        if T < self.T_base:
+            T = self.T_base
+        # print('theta T: ', T)
+        return T / self.eps_dk
+
+    # collision integral for diffusivity
+    def _theta_diffusivity(self, T):
+        return 1 / pow(self._T_D(T), 0.145) + 1 / pow((self._T_D(T) + 0.5), 2)
+
+    # collision integral for viscosity
+    def _theta_viscosity(self, T):
+        return 1.14 * self._theta_diffusivity(T)
+
+    # viscocity [kg/m-s]
+    def _viscosity_kinetic_theory(self, T):
+        return 2.67e-6 * pow(self.mu * T, 0.5) / (pow(self.sigma, 2) * self._theta_viscosity(T))
+
+    # heat conductivity [W/m-K]
+    def _heat_conductivity_kinetic_theory(self, T):
+        return 15 / 4 * R0 / (self.mu * 0.001) * self._viscosity_kinetic_theory(T) * (4 / 15 * self.get_Cp(T) * self.mu * 0.001 / R0 + 1 / 3)
+
+    # self-diffusivity [m^2/s]
+    def _diffusivity_kinetic_theory(self, T):
+        return 0.00186 * pow(pow(T, 3) * (1 / self.mu + 1 / self.mu), 0.5) / (pow(self.sigma, 2) * self._theta_diffusivity(T))
 
 
+    # Эти методы должны быть с теми же названиями, что для component_terra
+    def get_Cp(self, T):
+        return self.get_value_from_grid(T, self.Cp_grid)
+
+    def get_H(self, T):
+        if T < self.T_grid[0]:
+            return self.Cp_grid[0]*T
+        max_index = len(self.T_grid) - 1
+        if T > self.T_grid[max_index]:
+            return self.H_grid[max_index] + self.Cp_grid[max_index] * (T - self.T_grid[max_index])
+        else:
+            it = np.searchsorted(self.T_grid, T, side='left')
+            T0 = self.T_grid[it-1]
+            T1 = self.T_grid[it]
+            H_0 = self.H_grid[it-1]
+            H_1 = self.H_grid[it]
+            return self.interpolated_value(T, T0, T1, H_0, H_1)
+
+    def get_mu(self):
+        return self.mu
+
+    def get_dH0(self):
+        return self.dH0
+
+    def get_rho(self):
+        return self.rho
+
+    def get_viscosity(self, T):
+        return self.get_value_from_grid(T, self.viscosity_grid)
+
+    def get_heat_conductivity(self, T):
+        return self.get_value_from_grid(T, self.heat_conductivity_grid)
+
+    def get_diffusivity(self, T):
+        return self.get_value_from_grid(T, self.diffusivity_grid)
 
 
-
-
-
-
-    # def H_From_Terra(self, T):
-    #     i = 0
-    #     n_max = len(self.T_range) - 1
-    #     n = 0
-    #     while n < n_max:
-    #         if T > self.T_range[n]:
-    #             n += 1
-    #         else:
-    #             break
-    #         i = n - 1
-    #     if T >= self.T_range[n_max]:
-    #         i = n_max - 1
-    #         T = self.T_range[n_max]
-    #     elif T <= self.T_range[0]:
-    #         T = self.T_range[0]
-    #     # print(i)
-    #     x = 0.0001*T
-    #     return self.H(x, self.f_ranges[i, 1], self.f_ranges[i, 2], self.f_ranges[i, 3], self.f_ranges[i, 4], self.f_ranges[i, 5], self.f_ranges[i, 6])
-
-
-
-
-
-    # def get_Cp(self, T):
-    #     return self.get_value_from_grid(T, self.Cp_grid)
-    #
-    #
-    # def get_H(self, T):
-    #     # print('inside get_H for mixture component')
-    #     if T < self.T_grid[0]:
-    #         # print('inside less loop')
-    #         it = np.searchsorted(self.T_grid, T, side='left')
-    #         return self.Cp_grid[it - 1]*T
-    #         # return self.Cp_grid[0]*T
-    #     max_index = len(self.T_grid) - 1
-    #     if T > self.T_grid[max_index]:
-    #         # print('inside more loop')
-    #         return self.H_grid[max_index] + self.Cp_grid[max_index] * (T - self.T_grid[max_index])
-    #     else:
-    #         it = np.searchsorted(self.T_grid, T, side='left')
-    #         T0 = self.T_grid[it-1]
-    #         T1 = self.T_grid[it]
-    #         H_0 = self.H_grid[it-1]
-    #         H_1 = self.H_grid[it]
-    #         # print('inside general loop', it, T0, T1, H_0, H_1)
-    #         return self.interpolated_value(T, T0, T1, H_0, H_1)
-
-    # def get_mu(self):
-    #     return self.mu
-    #
-    # def get_dH0(self):
-    #     return self.dH0
-    #
-    #
-    # def calculate_Cp_T_base(self):
-    #     Cp_298 = self.Cp_From_Terra(self.T0)
-    #     H_298 = self.H_From_Terra(self.T0)
-    #     Cp_T_base = (H_298 - Cp_298*(self.T0-self.T_base)/2) / (self.T_base + (self.T0-self.T_base)/2)
-    #     return Cp_T_base
-
-
-# class Component_Dispersed(Component):
-#     def __init__(self, name, T_base, mu, rho, dH0, T_grid, Cp_grid, H_grid):
-#         super().__init__(name, T_base, mu, rho, dH0, T_grid, Cp_grid, H_grid)
-#         self.columns_mix = ['T [K]', 'Cp [Дж/кг-К]', 'H [Дж/кг]']
-#         self.data = pd.DataFrame(data=np.array([self.T_grid, self.Cp_grid, self.H_grid]).transpose(), index=self.T_grid, columns=self.columns_mix)
-#         # self.data.drop(index=0, inplace=True)
-#         print('mixture dispersed component ', name, ' is initialized')
-#
-#     def get_rho(self):
-#         return self.rho
-#
-#
-# class Component_Gas(Component):
-#     def __init__(self, name, T_base, mu, rho, dH0, T_grid, Cp_grid, H_grid, viscosity_grid, heat_conductivity_grid, diffusivity_grid):
-#         super().__init__(name, T_base, mu, rho, dH0, T_grid, Cp_grid, H_grid)
-#         self.viscosity_grid = viscosity_grid
-#         self.heat_conductivity_grid = heat_conductivity_grid
-#         self.diffusivity_grid = diffusivity_grid
-#         self.columns_mix = ['T [K]', 'Cp [Дж/кг-К]', 'H [Дж/кг]', 'Mu_visc [kg/m-s]', 'Lambda [W/m-K]', 'D [m^2/s]']
-#         self.data = pd.DataFrame(data=np.array([self.T_grid, self.Cp_grid, self.H_grid, self.viscosity_grid, self.heat_conductivity_grid, self.diffusivity_grid]).transpose(), index=self.T_grid, columns=self.columns_mix)
-#         # self.data.drop(index=0, inplace=True)
-#         print('mixture gas component ', name, ' is initialized')
-#
-#
-#     def get_viscosity(self, T):
-#         return self.get_value_from_grid(T, self.viscosity_grid)
-#
-#     def get_heat_conductivity(self, T):
-#         return self.get_value_from_grid(T, self.heat_conductivity_grid)
-#
-#     def get_diffusivity(self, T):
-#         return self.get_value_from_grid(T, self.diffusivity_grid)

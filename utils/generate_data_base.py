@@ -73,13 +73,13 @@ def generate_data_base(dir_thermo, file_thermo, dir_output, file_output):
         a5_high = None
         a6_high = None
         a7_high = None
-        sp_name = None
-        sp_date = None
-        sp_formula = None
-        sp_phase = None
-        sp_t_low = None
-        sp_t_high = None
-        sp_t_mid = None
+        name = None
+        date = None
+        formula = None
+        phase = None
+        t_low = None
+        t_high = None
+        t_mid = None
         atomic = None
 
         sp_previous_number = 0
@@ -90,48 +90,48 @@ def generate_data_base(dir_thermo, file_thermo, dir_output, file_output):
             sp_current_number = (ind - 2) // 4
 
             if (ind - 2) % 4 == 0 and row.strip() != 'END':
-                sp_name = row[:16].strip()
-                sp_date_string = ''.join((row[18:20], ' ', row[20:22], ' ', row[22:24]))
+                name = row[:16].strip()
+                date_string = ''.join((row[18:20], ' ', row[20:22], ' ', row[22:24]))
                 try:
-                    sp_date = datetime.strptime(sp_date_string, '%d %m %y').date()
+                    date = datetime.strptime(date_string, '%d %m %y').date()
                 except ValueError:
-                    sp_date = 'None'
+                    date = 'None'
                     print('No date information for current species')
                 if '&' not in row:
                     print('ROW IS', row)
-                    sp_formula_01 = _parse_formula(row[24:29])
-                    sp_formula_02 = _parse_formula(row[29:34])
-                    sp_formula_03 = _parse_formula(row[34:39])
-                    sp_formula_04 = _parse_formula(row[39:44])
-                    formula_list = [sp_formula_01, sp_formula_02, sp_formula_03, sp_formula_04]
+                    formula_01 = _parse_formula(row[24:29])
+                    formula_02 = _parse_formula(row[29:34])
+                    formula_03 = _parse_formula(row[34:39])
+                    formula_04 = _parse_formula(row[39:44])
+                    formula_list = [formula_01, formula_02, formula_03, formula_04]
                     print(formula_list)
 
-                    # sp_formula_01 = row[24:29].strip()
-                    # sp_formula_02 = row[29:34].strip()
-                    # sp_formula_03 = row[34:39].strip()
-                    # sp_formula_04 = row[39:44].strip()
-                    sp_formula = ''
+                    # formula_01 = row[24:29].strip()
+                    # formula_02 = row[29:34].strip()
+                    # formula_03 = row[34:39].strip()
+                    # formula_04 = row[39:44].strip()
+                    formula = ''
                     for formula_tuple in formula_list:
                         symbol, value = formula_tuple
                         print('outside - symbol:', symbol, 'value: ', value)
                         if symbol not in ('00', '0', '') and value not in ('00', '0', ''):
                             print('inside - symbol:', symbol, 'value: ', value)
-                            sp_formula += symbol + value
+                            formula += symbol + value
 
-                    # sp_formula = row[24:44].strip()
+                    # formula = row[24:44].strip()
                 else:
-                    sp_formula = row.split('&')[1].strip()
-                sp_formula = re.sub(r'\s+', '', sp_formula)
+                    formula = row.split('&')[1].strip()
+                formula = re.sub(r'\s+', '', formula)
                 # далее сделано если нет строки выше
-                sp_list = (re.sub(r'(\d+[.,]?\d+)', r'\1 ', sp_formula))  # выделяем границу молей предыдущего компонента и имени следующего
+                sp_list = (re.sub(r'(\d+[.,]?\d+)', r'\1 ', formula))  # выделяем границу молей предыдущего компонента и имени следующего
                 sp_list = re.split(r'\s', sp_list)  # разбиваем строку по пробелам
                 sp_list = [x for x in sp_list if x]  # удаляем лишние пробелы
                 # sp_components = [x for ind, x in enumerate(sp_list) if ((ind % 2) != 1)]
                 # sp_moles = [x for ind, x in enumerate(sp_list) if ((ind % 2) != 0)]
-                sp_phase = row[44]
-                sp_t_low = float(row[45:55].strip())
-                sp_t_high = float(row[55:65].strip())
-                sp_t_mid = float(row[65:73].strip())
+                phase = row[44]
+                t_low = float(row[45:55].strip())
+                t_high = float(row[55:65].strip())
+                t_mid = float(row[65:73].strip())
                 atomic = _safe_str_to_Nan_convertion(row[73:78].strip())
             if (ind - 2) % 4 == 1:
                 a1_high = float(row[0:15])
@@ -151,25 +151,23 @@ def generate_data_base(dir_thermo, file_thermo, dir_output, file_output):
                 a6_low = float(row[30:45])
                 a7_low = float(row[45:60])
                 try:
-                    test_string = ''.join(('INSERT INTO thermo VALUES ( \'', sp_name, '\', \'', str(sp_date), '\', \'', sp_formula, '\', \'', sp_phase, '\', ', str(sp_t_low), ', ', str(sp_t_mid), ', ', str(sp_t_high), ', ',
+                    # создание таблицы SQL температурных диапазонов
+                    test_string = ''.join(('INSERT INTO thermo VALUES ( \'', name, '\', \'', str(date), '\', \'', formula, '\', \'', phase, '\', ', str(t_low), ', ', str(t_mid), ', ', str(t_high), ', ',
                                            str(a1_low), ', ', str(a2_low), ', ', str(a3_low), ', ', str(a4_low), ', ', str(a5_low), ', ', str(a6_low), ', ', str(a7_low), ', ',
                                            str(a1_high), ', ', str(a2_high), ', ', str(a3_high), ', ', str(a4_high), ', ', str(a5_high), ', ', str(a6_high), ', ', str(a7_high), ', \'', str(atomic), '\')'))
                     cursor.execute(test_string)
                     conn.commit()
                 except ValueError:
                     print('not reached full definition')
-
-            # создание таблицы SQL температурных диапазонов
-
-            try:
-                a_all = np.array([[a1_low, a2_low, a3_low, a4_low, a5_low, a6_low, a7_low],
-                                  [a1_high, a2_high, a3_high, a4_high, a5_high, a6_high, a7_high]])
-
-            except ValueError:
-                print('a not defined yet')
-
-            print(a_all)
-            print(row.strip(), len(row), ind)
+                print('check generator: name, date, formula, phase, atomic, t_low, t_mid, t_high, a1_low, a2_low, a3_low, a4_low, a5_low, a6_low, a7_low, a1_high, a2_high, a3_high, a4_high, a5_high, a6_high, a7_high',
+                      name, date, formula, phase, atomic, t_low, t_mid, t_high, a1_low, a2_low, a3_low, a4_low, a5_low, a6_low, a7_low, a1_high, a2_high, a3_high, a4_high, a5_high, a6_high, a7_high)
+                try:
+                    a_all = np.array([[a1_low, a2_low, a3_low, a4_low, a5_low, a6_low, a7_low],
+                                      [a1_high, a2_high, a3_high, a4_high, a5_high, a6_high, a7_high]])
+                except ValueError:
+                    print('a not defined yet')
+                print(a_all)
+                print(row.strip(), len(row), ind)
 
     for item in temp_range_list:
         temp_range.append(float(item))
