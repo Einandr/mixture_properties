@@ -44,6 +44,7 @@ class Component:
         self.T_base = T_base                                                # [K] температура для вычисления крайнего нижнего значения Ср с целью сведения в единое значение полной энтальпии при расчете через коэффициенты и через интеграл
         self.T0 = T0                                                        # должна быть 298.15 K - температура для вычисления энтальпии образования
 
+        print('check formula:', formula)
         self.sp_list = (re.sub(r'(\d+[.,]?)', r'\1 ', self.formula))        # выделяем границу молей предыдущего компонента и имени следующего
         self.sp_list = (re.sub(r'([a-zA-Z]+)', r'\1 ', self.sp_list))       # выделяем границу компонента и его количества молей
         self.sp_list = re.split(r'\s', self.sp_list)                        # разбиваем строку по пробелам
@@ -52,6 +53,7 @@ class Component:
         self.sp_components = [x for ind, x in enumerate(self.sp_list) if ((ind % 2) != 1)]
         self.sp_moles = [x for ind, x in enumerate(self.sp_list) if ((ind % 2) != 0)]
         self.mu = 0                                                         # [г/моль]
+        print('test sp_components:', self.sp_components, self.sp_moles)
         for ind, x in enumerate(self.sp_components):
             self.el = element(x)
             self.moles = float(self.sp_moles[ind])
@@ -103,7 +105,7 @@ class Component:
         os.chdir('..')
 
     def interpolated_value(self, x, x0, x1, y0, y1):
-        print('interpolating', x, x0, x1, y0, y1)
+        # print('interpolating', x, x0, x1, y0, y1)
         return y0 + (y1 - y0) / (x1 - x0) * (x - x0)
 
     def get_value_from_grid(self, T, grid):

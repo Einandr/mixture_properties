@@ -62,6 +62,7 @@ def output_props(name, is_gas, T_base, df):
             'diffusivity': 'D [m^2/s]'
         }
 
+    print('check data from output_props: name, df:\n', name, df)
 
     # define dict of dataframe and fill with dataframes
     props_for_yaml = props.copy()
@@ -97,9 +98,10 @@ def output_props(name, is_gas, T_base, df):
                 for ind, row in df_for_dict[::-1].itertuples():
                     # rarefy - only for gas - BE CAREFUL NOT TO DELETE PHASE TRANSITION DATA
                     print('check:', is_gas, ind, ind % 200)
-                    if ind % 200 != 0:
+                    if ind % 100 != 0:
                         print('here true')
                         ind_for_drop2.append(ind)
+                print('ind_for_drop2:', ind_for_drop2)
                 df_for_dict.drop(ind_for_drop2, inplace=True)
 
 
@@ -115,7 +117,7 @@ def output_props(name, is_gas, T_base, df):
             ind_for_drop = []
             for ind, row in df_for_dict[::-1].itertuples():
                 # print(ind, row)
-                if ind % 200 != 0:
+                if ind % 100 != 0:
                     ind_for_drop.append(ind)
             df_for_dict.drop(ind_for_drop, inplace=True)
             # return_df_for_dict = df_for_dict.copy()

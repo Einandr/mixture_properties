@@ -44,6 +44,11 @@ class Material:
         self.path_terra = 'terra'
         os.makedirs(self.path_terra, exist_ok=True)
         os.chdir(self.path_terra)
+        for comp in self.components:  # Добавляем точки температуры из компонент CHEMKIN
+            self.T_grid_mixture_nonunique.extend(comp.T_grid)
+
+
+
         for key, value in self.mixture_reference.items():
             for key2, in_component in value.items():
                 print('inside material key2 is:', key2)
@@ -56,7 +61,10 @@ class Material:
                         self.component_terra_names_list.append(component.name)
                         self.T_grid_mixture_nonunique.extend(tc.show_properties_of_component(component, self.show_plots,  self.T_base))
                 # elif in_component.source == Source.C:
-                #     component = cc.initialize_chemkin_component(key2, self.df_terra, self.T0, self.T_base, self.dT_phase_transition, self.T_first, self.T_last, self.dT)
+                    # component = cc.initialize_chemkin_component(key2, self.df_terra, self.T0, self.T_base, self.dT_phase_transition, self.T_first, self.T_last, self.dT)
+                    # self.T_grid_mixture_nonunique.extend()
+
+
 
 
 
