@@ -5,7 +5,9 @@ import math
 import yaml
 from matplotlib.patches import Polygon
 from decimal import Decimal
-
+from ruamel.yaml import YAML
+from ruamel.yaml.comments import CommentedMap
+from collections import OrderedDict
 
 
 def get_prop(df, str_start, x, y, quant, str_end):
@@ -42,35 +44,57 @@ def get_prop_from_yaml(df, str_start, str_end, quant):
     return prop
 
 
-def output_props(name, is_gas, T_base, df):
+def output_props(name, is_gas, T_base, T0, df, df_constants):
     # Make YAML file for QUBIC calculations
     if is_gas:
         file_yaml_out = ''.join(('g_qubiq_', name, '.yaml'))
     else:
         file_yaml_out = ''.join(('p_qubiq_', name, '.yaml'))
+
     T_header = 'T [K]'
 
+    # Определяем температурно-зависимые свойства
     if not is_gas:
-        props = {
-            'heat_capacity': 'Cp [Дж/кг-К]',
-        }
+        props = OrderedDict([
+            ('heat_capacity', 'Cp [J/kg-K]')
+        ])
     else:
-        props = {
-            'heat_capacity': 'Cp [Дж/кг-К]',
-            'viscosity': 'Mu_visc [kg/m-s]',
-            'heat_conductivity': 'Lambda [W/m-K]',
-            'diffusivity': 'D [m^2/s]'
-        }
+        props = OrderedDict([
+            ('heat_capacity', 'Cp [J/kg-K]'),
+            ('viscosity', 'Mu_visc [kg/m-s]'),
+            ('heat_conductivity', 'Lambda [W/m-K]'),
+            ('diffusivity', 'D [m^2/s]')
+        ])
 
-    print('check data from output_props: name, df:\n', name, df)
+    props_for_yaml = CommentedMap()
 
-    # define dict of dataframe and fill with dataframes
-    props_for_yaml = props.copy()
-    for key, value in props_for_yaml.items():
+    # Добавляем константные свойства в начало YAML
+    constant_keys = OrderedDict([
+            ('formation_heat', 'dH0 [J/kg]'),
+            ('molar_mass', 'M [kg/mol]'),
+            ('gas_constant', 'R [J/kg-K]'),
+            ('density', 'rho [kg/m3]')
+        ])
+
+    for key, value in constant_keys.items():
+        if value in df_constants.columns:
+            if key == 'formation_heat':
+                formation_heat_value = df_constants[value].iloc[0]
+                props_for_yaml.yaml_set_comment_before_after_key(key, before=f'\n{value}, {T0} K\n')
+                formation_heat_map = CommentedMap()
+                formation_heat_map[float(T0)] = float(formation_heat_value)
+                props_for_yaml[key] = formation_heat_map
+            elif key in ['molar_mass', 'gas_constant', 'density']:
+                if (is_gas and key in ['molar_mass', 'gas_constant']) or (not is_gas and key in ['molar_mass', 'gas_constant', 'density']):
+                    constant_value = df_constants[value].iloc[0]
+                    props_for_yaml.yaml_set_comment_before_after_key(key, before=f'\n{value}\n')
+                    props_for_yaml[key] = float(constant_value)
+
+    for key, value in props.items():
         df_for_dict = pd.DataFrame(columns=[T_header, value])
         rarefy_output = False
 
-        if value == 'Cp [Дж/кг-К]':
+        if value == 'Cp [J/kg-K]':
             # if we want float precision:
             df_for_dict[T_header] = df[T_header].map('{:.1f}'.format).astype(float)
             df_for_dict[value] = df[value].map('{:.1f}'.format).astype(float)
@@ -104,8 +128,6 @@ def output_props(name, is_gas, T_base, df):
                         ind_for_drop2.append(ind)
                 print('ind_for_drop2:', ind_for_drop2)
                 df_for_dict.drop(ind_for_drop2, inplace=True)
-
-
             print('rarefied Cp df for dict: ', df_for_dict)
             return_df_for_dict = df_for_dict.copy()
         else:
@@ -124,13 +146,15 @@ def output_props(name, is_gas, T_base, df):
             df_for_dict.drop(ind_for_drop, inplace=True)
             # return_df_for_dict = df_for_dict.copy()
             print('rarefied df for dict: ', df_for_dict)
-        props_for_yaml[key] = df_for_dict
-    for key, value in props_for_yaml.items():
-        props_for_yaml[key] = list(value.to_dict(orient='dict').values())[0]
+
+        data_map = CommentedMap()
+        for index, row in df_for_dict.iterrows():
+            data_map[float(index)] = float(row[value])
+        props_for_yaml.yaml_set_comment_before_after_key(key, before=f'\n{value}\n')
+        props_for_yaml[key] = data_map
+    yaml = YAML()
     with open(file_yaml_out, 'w') as f:
         yaml.dump(props_for_yaml, f)
-
-
 
 
     # Make txt file for UDF for FLUENT calculations - write Cp only
@@ -140,7 +164,7 @@ def output_props(name, is_gas, T_base, df):
         file_txt_out = ''.join(('p_fluent_UDF_', name, '.txt'))
     with open(file_txt_out, 'w') as f:
         for key, value in props.items():
-            if value == 'Cp [Дж/кг-К]':
+            if value == 'Cp [J/kg-K]':
                 f.write(T_header)
                 f.write('\n')
                 strlist = return_df_for_dict.index.tolist()
@@ -158,8 +182,6 @@ def output_props(name, is_gas, T_base, df):
                 # f.write(str([float('{:.1f}'.format(x)) for x in strlist]))
                 # if integer precision is enough:
                 f.write(str([int(x) for x in strlist]))
-
-
 
 
     if is_gas:
@@ -200,8 +222,6 @@ def output_props(name, is_gas, T_base, df):
         with open(''.join(('p_fluent_', name, '.jou')), 'w') as f:
             f.write(';Cp\n')
             f.write(prop_Cp)
-
-
 
     return return_df_for_dict.index.tolist()
 

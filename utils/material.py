@@ -123,20 +123,21 @@ class Material:
             # data_T_dependent_properties = calculate_mixture_properties(writer_gas, name, mixture)
             data_T_dependent_properties = self.__calculate_mixture_properties_Tdependent(mixture_name, mass_fractions_dict)
             self.dict_of_T_dependent_properties[mixture_name] = data_T_dependent_properties
+            self.output_props(mixture_name)
+
         self.constant_props = pd.concat(self.list_of_constant_properties)
         self.constant_props.to_excel(self.writer, index=True, sheet_name='constant_props')
         self.writer.close()
 
 
-
         self.dict_of_components = {}
         for mixture_name, mass_fractions_dict in self.mixture_reference.items():
-            mu = self.dict_of_constant_properties[mixture_name]['mu'].iloc[0]
-            rho = self.dict_of_constant_properties[mixture_name]['rho'].iloc[0]
-            dH0 = self.dict_of_constant_properties[mixture_name]['dH0'].iloc[0]
+            mu = self.dict_of_constant_properties[mixture_name]['M [kg/mol]'].iloc[0]
+            rho = self.dict_of_constant_properties[mixture_name]['rho [kg/m3]'].iloc[0]
+            dH0 = self.dict_of_constant_properties[mixture_name]['dH0 [J/kg]'].iloc[0]
             T_grid = self.dict_of_T_dependent_properties[mixture_name]['T [K]'].to_numpy()
-            Cp_grid = self.dict_of_T_dependent_properties[mixture_name]['Cp [Дж/кг-К]'].to_numpy()
-            H_grid = self.dict_of_T_dependent_properties[mixture_name]['H [Дж/кг]'].to_numpy()
+            Cp_grid = self.dict_of_T_dependent_properties[mixture_name]['Cp [J/kg-K]'].to_numpy()
+            H_grid = self.dict_of_T_dependent_properties[mixture_name]['H [J/kg]'].to_numpy()
             if not self.is_gas:
                 mixture_component = mc.initialize_mixture_component_dispersed(mixture_reference, mixture_name, self.T_base, mu, rho, dH0, T_grid, Cp_grid, H_grid)
                 self.dict_of_components[mixture_name] = mixture_component
@@ -324,12 +325,12 @@ class Material:
 
         if not self.is_gas:
             frame = {'T [K]': pd.Series(self.T_grid),
-                     'Cp [Дж/кг-К]': pd.Series(Cp_grid),
-                     'H [Дж/кг]': pd.Series(H_grid)}
+                     'Cp [J/kg-K]': pd.Series(Cp_grid),
+                     'H [J/kg]': pd.Series(H_grid)}
         else:
             frame = {'T [K]': pd.Series(self.T_grid),
-                     'Cp [Дж/кг-К]': pd.Series(Cp_grid),
-                     'H [Дж/кг]': pd.Series(H_grid),
+                     'Cp [J/kg-K]': pd.Series(Cp_grid),
+                     'H [J/kg]': pd.Series(H_grid),
                      'Mu_visc [kg/m-s]': pd.Series(viscosity_grid),
                      'Lambda [W/m-K]': pd.Series(heat_conductivity_grid),
                      'D [m^2/s]': pd.Series(diffusivity_grid)}
@@ -340,14 +341,19 @@ class Material:
         data.set_index('T [K]', drop=False, inplace=True)
         print('data check: ', data)
         data.to_excel(self.writer, index=False, sheet_name=mixture_name)
-        ou.output_props(mixture_name, self.is_gas, self.T_base, data)
+        # ou.output_props(mixture_name, self.is_gas, self.T_base, data)
         return data
 
     def __calculate_mixture_properties_constant(self, mixture_name, mass_fractions_dict):
-        mu = self.get_mixture_mu(mass_fractions_dict)
+        mu = self.get_mixture_mu(mass_fractions_dict) / 1000
         rho = self.get_mixture_rho(mass_fractions_dict)
         dH0 = self.get_mixture_dH0(mass_fractions_dict)
-        return pd.DataFrame(data=[[mu, rho, dH0]], index=[mixture_name], columns=['mu', 'rho', 'dH0'])
+        return pd.DataFrame(data=[[mu, rho, dH0]], index=[mixture_name], columns=['M [kg/mol]', 'rho [kg/m3]', 'dH0 [J/kg]'])
+
+    def output_props(self, mixture_name):
+        ou.output_props(mixture_name, self.is_gas, self.T_base, self.T0, self.dict_of_T_dependent_properties[mixture_name], self.dict_of_constant_properties[mixture_name])
+        return None
+
 
     # next methods no need for check in self.dict_of_components - this is for MIXTURE COMPONENTS
     def get_density(self, mass_fractions):
