@@ -32,7 +32,7 @@ def read_chemkin_file(path):
     return species_names
 
 
-def initiate_kinetics(path_db_thermo, components_names, T_last=None, path_db_transport=None):
+def initiate_kinetics(path_db_thermo, components_names, show_plots=False, T_last=None, path_db_transport=None):
     # Подключение к базе данных термодинамики
     conn_thermo = sqlite3.connect(path_db_thermo)
     cursor_thermo = conn_thermo.cursor()
@@ -128,6 +128,7 @@ def initiate_kinetics(path_db_thermo, components_names, T_last=None, path_db_tra
         # Создаем объект Component
         list_components.append(
             Component(
+                show_plots=show_plots,
                 name=name,
                 date=date,
                 formula=formula,

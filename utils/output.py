@@ -10,6 +10,89 @@ from ruamel.yaml.comments import CommentedMap
 from collections import OrderedDict
 
 
+def plot_property(T_grid, property_grid, mixture_name, is_gas, save_path,
+                  y_label, title_label, file_name, legend_label=r'$C_p$'):
+    """
+    Функция для построения и сохранения графика одного свойства смеси.
+
+    :param T_grid: Массив температур.
+    :param property_grid: Массив значений свойства.
+    :param mixture_name: Имя смеси для названия файла.
+    :param is_gas: Флаг, указывающий, является ли смесь газом.
+    :param save_path: Путь для сохранения графика.
+    :param y_label: Метка оси Y.
+    :param title_label: Заголовок графика.
+    :param file_name: Имя файла для сохранения.
+    :param legend_label: Метка для легенды.
+    """
+    plt.figure()
+    plt.grid(True)
+    plt.plot(T_grid, property_grid, label=legend_label)
+    plt.legend(fontsize='medium', loc='best')
+    plt.title(title_label)
+    plt.xlabel(r'$Т\ (К)$')
+    plt.ylabel(y_label)
+    plt.xlim(0)
+    plt.ylim(0)
+    plt.savefig(f'{save_path}/{"gas" if is_gas else "disp"}_{mixture_name}_{file_name}.jpeg',
+                dpi=400, bbox_inches='tight')
+    plt.close()
+
+
+def plot_mixture_properties(data, mixture_name, is_gas, save_path='.'):
+    """
+    Функция для построения и сохранения графиков свойств смеси.
+
+    :param data: DataFrame с данными свойств смеси.
+    :param mixture_name: Имя смеси для названия файлов.
+    :param is_gas: Флаг, указывающий, является ли смесь газом.
+    :param save_path: Путь для сохранения графиков.
+    """
+    T_grid = data['T [K]']
+    Cp_grid = data['Cp [J/kg-K]']
+    H_grid = data['H [J/kg]']
+
+    # График теплоёмкости
+    plot_property(T_grid, Cp_grid, mixture_name, is_gas, save_path,
+                  y_label=r'$C_p\ (\frac{Дж}{кг\cdot К})$',
+                  title_label=r'$Теплоёмкость$',
+                  file_name='Cp',
+                  legend_label=r'$C_p$')
+
+    # График энтальпии
+    plot_property(T_grid, H_grid, mixture_name, is_gas, save_path,
+                  y_label=r'$H\ (\frac{Дж}{кг})$',
+                  title_label=r'$Энтальпия$',
+                  file_name='H',
+                  legend_label=r'$H$')
+
+    if is_gas:
+        viscosity_grid = data['Mu_visc [kg/m-s]']
+        heat_conductivity_grid = data['Lambda [W/m-K]']
+        diffusivity_grid = data['D [m^2/s]']
+
+        # График вязкости
+        plot_property(T_grid, viscosity_grid, mixture_name, is_gas, save_path,
+                      y_label=r'$\mu\ (Па \cdot с)$',
+                      title_label=r'$Вязкость$',
+                      file_name='viscosity',
+                      legend_label=r'$\mu$')
+
+        # График теплопроводности
+        plot_property(T_grid, heat_conductivity_grid, mixture_name, is_gas, save_path,
+                      y_label=r'$\lambda\ (\frac{Вт}{м \cdot K})$',
+                      title_label=r'$Теплопроводность$',
+                      file_name='heat_conductivity',
+                      legend_label=r'$\lambda$')
+
+        # График диффузии
+        plot_property(T_grid, diffusivity_grid, mixture_name, is_gas, save_path,
+                      y_label=r'$D\ (\frac{м^2}{c})$',
+                      title_label=r'$Диффузия$',
+                      file_name='diffusivity',
+                      legend_label=r'$D$')
+
+
 def get_prop(df, str_start, x, y, quant, str_end):
     print('data from get props: ', df)
     prop = str_start
@@ -68,13 +151,28 @@ def output_props(name, is_gas, T_base, T0, df, df_constants):
 
     props_for_yaml = CommentedMap()
 
+    # Извлечение значений eps_dk и sigma из df_constants
+    eps_dk_value = None
+    sigma_value = None
+    if 'eps_dk [Kelvins]' in df_constants.columns:
+        eps_dk_value = df_constants['eps_dk [Kelvins]'].iloc[0]
+    if 'sigma [angstroms]' in df_constants.columns:
+        sigma_value = df_constants['sigma [angstroms]'].iloc[0]
+
+    # Создание комментария для первой строки YAML
+    comment_header = f"# Transport properties calculated basen on kinetic theory formulas for Lennard-Jones potential well depth eps_dk = {eps_dk_value} Kelvins, Lennard-Jones collision diameter sigma = {sigma_value} angstroms\n"
+
     # Добавляем константные свойства в начало YAML
     constant_keys = OrderedDict([
             ('formation_heat', 'dH0 [J/kg]'),
             ('molar_mass', 'M [kg/mol]'),
             ('gas_constant', 'R [J/kg-K]'),
-            ('density', 'rho [kg/m3]')
+            ('density', 'rho [kg/m3]'),
+            ('eps_dk', 'eps_dk [Kelvins]'),
+            ('sigma', 'sigma [angstroms]')
         ])
+
+    print('df_constants test:', df_constants)
 
     for key, value in constant_keys.items():
         if value in df_constants.columns:
@@ -153,7 +251,9 @@ def output_props(name, is_gas, T_base, T0, df, df_constants):
         props_for_yaml.yaml_set_comment_before_after_key(key, before=f'\n{value}\n')
         props_for_yaml[key] = data_map
     yaml = YAML()
+    yaml.width = 4096  # Увеличиваем ширину для длинных строк
     with open(file_yaml_out, 'w') as f:
+        f.write(comment_header)
         yaml.dump(props_for_yaml, f)
 
 

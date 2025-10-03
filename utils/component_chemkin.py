@@ -6,13 +6,16 @@ import re
 import math
 import os
 
+from . import output as ou
+
 # Константы:
 R0 = 8.314       # [Дж / моль-К] универсальная газовая постоянная
 cal = 4184       # [кДж] термическая калория, используемая в Ansys Chemkin
 
 
 class Component:
-    def __init__(self, name, date, formula, phase, T_low, T_mid, T_high, atomic, a1_low, a2_low, a3_low, a4_low, a5_low, a6_low, a7_low, a1_high, a2_high, a3_high, a4_high, a5_high, a6_high, a7_high, dT, T_base, T0, eps_dk, sigma, T_last=None):
+    def __init__(self, show_plots, name, date, formula, phase, T_low, T_mid, T_high, atomic, a1_low, a2_low, a3_low, a4_low, a5_low, a6_low, a7_low, a1_high, a2_high, a3_high, a4_high, a5_high, a6_high, a7_high, dT, T_base, T0, eps_dk, sigma, T_last=None):
+        self.show_plots = show_plots
         self.name = name
         self.date = date
         self.formula = formula
@@ -27,6 +30,7 @@ class Component:
         self.dT = dT                                                        # интервал с которым будем создавать сетку значений по температуре
         self.T_base = T_base                                                # [K] температура для вычисления крайнего нижнего значения Ср с целью сведения в единое значение полной энтальпии при расчете через коэффициенты и через интеграл
         self.T0 = T0                                                        # должна быть 298.15 K - температура для вычисления энтальпии образования
+        self.is_gas = True                                                  # пока так - но видел я и жидкие ЧЕМКИН компоненты
 
         print('check formula:', formula)
         self.sp_list = (re.sub(r'(\d+[.,]?)', r'\1 ', self.formula))        # выделяем границу молей предыдущего компонента и имени следующего
@@ -68,23 +72,28 @@ class Component:
         self.eps_dk = eps_dk
         self.sigma = sigma
 
-        self.columns_mix = ['T [K]', 'Cp [Дж/кг-К]', 'H [Дж/кг]', 'Mu_visc [kg/m-s]', 'Lambda [W/m-K]', 'D [m^2/s]']
+        self.columns_mix = ['T [K]', 'Cp [J/kg-K]', 'H [J/kg]', 'Mu_visc [kg/m-s]', 'Lambda [W/m-K]', 'D [m^2/s]']
         self.vector_viscosity = np.vectorize(self._viscosity_kinetic_theory)
         self.viscosity_grid = self.vector_viscosity(T=self.T_grid)
         self.vector_heat_conductivity = np.vectorize(self._heat_conductivity_kinetic_theory)
         self.heat_conductivity_grid = self.vector_heat_conductivity(T=self.T_grid)
         self.vector_diffusivity = np.vectorize(self._diffusivity_kinetic_theory)
         self.diffusivity_grid = self.vector_diffusivity(T=self.T_grid)
-        self.data = pd.DataFrame(data=np.array([self.T_grid, self.Cp_grid, self.H_grid, self.viscosity_grid, self.heat_conductivity_grid, self.diffusivity_grid]).transpose(), index=self.T_grid, columns=self.columns_mix)
+        self.data_properties_T_dependent = pd.DataFrame(data=np.array([self.T_grid, self.Cp_grid, self.H_grid, self.viscosity_grid, self.heat_conductivity_grid, self.diffusivity_grid]).transpose(), index=self.T_grid, columns=self.columns_mix)
         print('gas component ', name, ' is initialized')
-        print(self.data)
+        print(self.data_properties_T_dependent)
 
         os.makedirs(self.path_chemkin, exist_ok=True)
         os.chdir(self.path_chemkin)
-        # self.data.drop(index=0, inplace=True)
+        # self.data_properties_T_dependent.drop(index=0, inplace=True)
         self.writer = pd.ExcelWriter(''.join(('out_', self.name, '.xlsx')), engine="xlsxwriter")
-        self.data.to_excel(self.writer, index=False, sheet_name='props')
+        self.data_properties_T_dependent.to_excel(self.writer, index=False, sheet_name='props')
+        self.data_properties_constant = pd.DataFrame(data=[[self.mu, self.dH0, self.eps_dk, self.sigma]], index=[self.name], columns=['M [kg/mol]', 'dH0 [J/kg]', 'eps_dk [Kelvins]', 'sigma [angstroms]'])
+        self.data_properties_constant.to_excel(self.writer, index=False, sheet_name='constant_props')
         self.writer.close()
+        if self.show_plots:
+            ou.plot_mixture_properties(self.data_properties_T_dependent, self.name, self.is_gas, save_path='.')
+        ou.output_props(self.name, self.is_gas, self.T_base, self.T0, self.data_properties_T_dependent, self.data_properties_constant)
         os.chdir('..')
 
     def create_T_grid(self):

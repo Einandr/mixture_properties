@@ -113,16 +113,18 @@ class Material:
 
         self.writer = pd.ExcelWriter(''.join((self.output_file_name, '.xlsx')), engine="xlsxwriter")
         self.list_of_constant_properties = []
-        self.dict_of_constant_properties = {}
-        self.dict_of_T_dependent_properties = {}
+        self.dict_of_properties_constant = {}
+        self.dict_of_properties_T_dependent = {}
         for mixture_name, mass_fractions_dict in self.mixture_reference.items():
             # data_constant_props = calculate_mixture_constant_properties(name, mixture)
             data_constant_props = self.__calculate_mixture_properties_constant(mixture_name, mass_fractions_dict)
             self.list_of_constant_properties.append(data_constant_props)
-            self.dict_of_constant_properties[mixture_name] = data_constant_props
+            self.dict_of_properties_constant[mixture_name] = data_constant_props
             # data_T_dependent_properties = calculate_mixture_properties(writer_gas, name, mixture)
             data_T_dependent_properties = self.__calculate_mixture_properties_Tdependent(mixture_name, mass_fractions_dict)
-            self.dict_of_T_dependent_properties[mixture_name] = data_T_dependent_properties
+            self.dict_of_properties_T_dependent[mixture_name] = data_T_dependent_properties
+            if self.show_plots:
+                ou.plot_mixture_properties(data_T_dependent_properties, mixture_name, self.is_gas, save_path='.')
             self.output_props(mixture_name)
 
         self.constant_props = pd.concat(self.list_of_constant_properties)
@@ -132,20 +134,22 @@ class Material:
 
         self.dict_of_components = {}
         for mixture_name, mass_fractions_dict in self.mixture_reference.items():
-            mu = self.dict_of_constant_properties[mixture_name]['M [kg/mol]'].iloc[0]
-            rho = self.dict_of_constant_properties[mixture_name]['rho [kg/m3]'].iloc[0]
-            dH0 = self.dict_of_constant_properties[mixture_name]['dH0 [J/kg]'].iloc[0]
-            T_grid = self.dict_of_T_dependent_properties[mixture_name]['T [K]'].to_numpy()
-            Cp_grid = self.dict_of_T_dependent_properties[mixture_name]['Cp [J/kg-K]'].to_numpy()
-            H_grid = self.dict_of_T_dependent_properties[mixture_name]['H [J/kg]'].to_numpy()
+            mu = self.dict_of_properties_constant[mixture_name]['M [kg/mol]'].iloc[0]
+            rho = self.dict_of_properties_constant[mixture_name]['rho [kg/m3]'].iloc[0]
+            dH0 = self.dict_of_properties_constant[mixture_name]['dH0 [J/kg]'].iloc[0]
+            eps_dk = self.dict_of_properties_constant[mixture_name]['eps_dk [Kelvins]'].iloc[0]
+            sigma = self.dict_of_properties_constant[mixture_name]['sigma [angstroms]'].iloc[0]
+            T_grid = self.dict_of_properties_T_dependent[mixture_name]['T [K]'].to_numpy()
+            Cp_grid = self.dict_of_properties_T_dependent[mixture_name]['Cp [J/kg-K]'].to_numpy()
+            H_grid = self.dict_of_properties_T_dependent[mixture_name]['H [J/kg]'].to_numpy()
             if not self.is_gas:
-                mixture_component = mc.initialize_mixture_component_dispersed(mixture_reference, mixture_name, self.T_base, mu, rho, dH0, T_grid, Cp_grid, H_grid)
+                mixture_component = mc.initialize_mixture_component_dispersed(mixture_reference, mixture_name, self.T_base, mu, rho, dH0, eps_dk, sigma, T_grid, Cp_grid, H_grid)
                 self.dict_of_components[mixture_name] = mixture_component
             else:
-                viscosity_grid = self.dict_of_T_dependent_properties[mixture_name]['Mu_visc [kg/m-s]'].to_numpy()
-                heat_conductivity_grid = self.dict_of_T_dependent_properties[mixture_name]['Lambda [W/m-K]'].to_numpy()
-                diffusivity_grid = self.dict_of_T_dependent_properties[mixture_name]['D [m^2/s]'].to_numpy()
-                mixture_component = mc.initialize_mixture_component_gas(mixture_reference, mixture_name, self.T_base, mu, rho, dH0, T_grid, Cp_grid, H_grid, viscosity_grid, heat_conductivity_grid, diffusivity_grid)
+                viscosity_grid = self.dict_of_properties_T_dependent[mixture_name]['Mu_visc [kg/m-s]'].to_numpy()
+                heat_conductivity_grid = self.dict_of_properties_T_dependent[mixture_name]['Lambda [W/m-K]'].to_numpy()
+                diffusivity_grid = self.dict_of_properties_T_dependent[mixture_name]['D [m^2/s]'].to_numpy()
+                mixture_component = mc.initialize_mixture_component_gas(mixture_reference, mixture_name, self.T_base, mu, rho, dH0, eps_dk, sigma, T_grid, Cp_grid, H_grid, viscosity_grid, heat_conductivity_grid, diffusivity_grid)
                 self.dict_of_components[mixture_name] = mixture_component
 
 
@@ -163,7 +167,6 @@ class Material:
                     print('no name for component ', comp)
                 continue
         return result
-
 
     def get_mixture_viscosity(self, mass_fractions_dict, T):
         result = 0
@@ -227,6 +230,24 @@ class Material:
                     result += comp.get_dH0() * component.value
         return result
 
+    # Предположим аддитивность для параметров кинетической теории
+    def get_mixture_eps_dk(self, mass_fractions_dict):
+        result = 0
+        for key, component in mass_fractions_dict.items():
+            for comp in self.components:
+                if key == comp.name:
+                    result += comp.eps_dk * component.value
+        return result
+
+    # Предположим аддитивность для параметров кинетической теории
+    def get_mixture_sigma(self, mass_fractions_dict):
+        result = 0
+        for key, component in mass_fractions_dict.items():
+            for comp in self.components:
+                if key == comp.name:
+                    result += comp.sigma * component.value
+        return result
+
     def __calculate_mixture_properties_Tdependent(self, mixture_name, mass_fractions_dict):
         Cp_grid = self.vector_get_mixture_Cp(mass_fractions_dict, self.T_grid)
         H_grid = self.vector_get_mixture_H(mass_fractions_dict, self.T_grid)
@@ -234,94 +255,6 @@ class Material:
             viscosity_grid = self.vector_get_mixture_viscosity(mass_fractions_dict, self.T_grid)
             heat_conductivity_grid = self.vector_get_mixture_heat_conductivity(mass_fractions_dict, self.T_grid)
             diffusivity_grid = self.vector_get_mixture_diffusivity(mass_fractions_dict, self.T_grid)
-
-        if self.show_plots:
-            # plots
-            if not self.is_gas:
-                plt.figure(1)
-                plt.grid(True)
-                plt.plot(self.T_grid, Cp_grid, label=r'$Ср$')
-                plt.legend(fontsize='medium', loc='best')
-                plt.title(r'$Теплоёмкость$')
-                plt.xlabel(r'$Т\ (К)$')
-                plt.ylabel(r'$C_p\ (\frac{Дж}{кг\cdot К})$')
-                plt.xlim(0)
-                plt.ylim(0)
-                plt.savefig(''.join(('disp_', mixture_name, '_Cp.jpeg')), dpi=400, bbox_inches='tight')
-                plt.close()
-
-                plt.figure(2)
-                plt.grid(True)
-                plt.plot(self.T_grid, H_grid, label=r'$H$')
-                plt.legend(fontsize='medium', loc='best')
-                plt.title(r'$Энтальпия$')
-                plt.xlabel(r'$Т\ (К)$')
-                plt.ylabel(r'$H\ (\frac{Дж}{кг})$')
-                plt.xlim(0)
-                plt.ylim(0)
-                plt.savefig(''.join(('disp_', mixture_name, '_H.jpeg')), dpi=400, bbox_inches='tight')
-                plt.close()
-            else:
-                plt.figure(1)
-                plt.grid(True)
-                plt.plot(self.T_grid, Cp_grid, label=r'$Ср$')
-                plt.legend(fontsize='medium', loc='best')
-                plt.title(r'$Теплоёмкость$')
-                plt.xlabel(r'$Т\ (К)$')
-                plt.ylabel(r'$C_p\ (\frac{Дж}{кг\cdot К})$')
-                plt.xlim(0)
-                plt.ylim(0)
-                plt.savefig(''.join(('gas_', mixture_name, '_Cp.jpeg')), dpi=400, bbox_inches='tight')
-                plt.close()
-
-                plt.figure(2)
-                plt.grid(True)
-                plt.plot(self.T_grid, H_grid, label=r'$H$')
-                plt.legend(fontsize='medium', loc='best')
-                plt.title(r'$Энтальпия$')
-                plt.xlabel(r'$Т\ (К)$')
-                plt.ylabel(r'$H\ (\frac{Дж}{кг})$')
-                plt.xlim(0)
-                plt.ylim(0)
-                plt.savefig(''.join(('gas_', mixture_name, '_H.jpeg')), dpi=400, bbox_inches='tight')
-                plt.close()
-
-                plt.figure(3)
-                plt.grid(True)
-                plt.plot(self.T_grid, viscosity_grid, label=r'$\mu$')
-                plt.legend(fontsize='medium', loc='best')
-                plt.title(r'$Вязкость$')
-                plt.xlabel(r'$Т\ (К)$')
-                plt.ylabel(r'$\mu\ (Па \cdot с)$')
-                plt.xlim(0)
-                plt.ylim(0)
-                plt.savefig(''.join(('gas_', mixture_name, '_viscosity.jpeg')), dpi=400, bbox_inches='tight')
-                plt.close()
-
-                plt.figure(4)
-                plt.grid(True)
-                plt.plot(self.T_grid, heat_conductivity_grid, label=r'$\lambda$')
-                plt.legend(fontsize='medium', loc='best')
-                plt.title(r'$Теплопроводность$')
-                plt.xlabel(r'$Т\ (К)$')
-                plt.ylabel(r'$\lambda\ (\frac{Вт}{м \cdot K})$')
-                plt.xlim(0)
-                plt.ylim(0)
-                plt.savefig(''.join(('gas_', mixture_name, '_heat_conductivity.jpeg')), dpi=400, bbox_inches='tight')
-                plt.close()
-
-                plt.figure(5)
-                plt.grid(True)
-                plt.plot(self.T_grid, diffusivity_grid, label=r'$D$')
-                plt.legend(fontsize='medium', loc='best')
-                plt.title(r'$Диффузия$')
-                plt.xlabel(r'$Т\ (К)$')
-                plt.ylabel(r'$D\ (\frac{м^2}{c})$')
-                plt.xlim(0)
-                plt.ylim(0)
-                plt.savefig(''.join(('gas_', mixture_name, '_diffusivity.jpeg')), dpi=400, bbox_inches='tight')
-                plt.close()
-
 
         if not self.is_gas:
             frame = {'T [K]': pd.Series(self.T_grid),
@@ -348,12 +281,13 @@ class Material:
         mu = self.get_mixture_mu(mass_fractions_dict) / 1000
         rho = self.get_mixture_rho(mass_fractions_dict)
         dH0 = self.get_mixture_dH0(mass_fractions_dict)
-        return pd.DataFrame(data=[[mu, rho, dH0]], index=[mixture_name], columns=['M [kg/mol]', 'rho [kg/m3]', 'dH0 [J/kg]'])
+        eps_dk = self.get_mixture_eps_dk(mass_fractions_dict)
+        sigma = self.get_mixture_sigma(mass_fractions_dict)
+        return pd.DataFrame(data=[[mu, rho, dH0, eps_dk, sigma]], index=[mixture_name], columns=['M [kg/mol]', 'rho [kg/m3]', 'dH0 [J/kg]', 'eps_dk [Kelvins]', 'sigma [angstroms]'])
 
     def output_props(self, mixture_name):
-        ou.output_props(mixture_name, self.is_gas, self.T_base, self.T0, self.dict_of_T_dependent_properties[mixture_name], self.dict_of_constant_properties[mixture_name])
+        ou.output_props(mixture_name, self.is_gas, self.T_base, self.T0, self.dict_of_properties_T_dependent[mixture_name], self.dict_of_properties_constant[mixture_name])
         return None
-
 
     # next methods no need for check in self.dict_of_components - this is for MIXTURE COMPONENTS
     def get_density(self, mass_fractions):

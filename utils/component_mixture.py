@@ -7,28 +7,30 @@ import math
 R0 = 8.31
 
 
-def initialize_mixture_component_dispersed(mixture_reference, name, T_base, mu, rho, dH0, T_grid, Cp_grid, H_grid):
+def initialize_mixture_component_dispersed(mixture_reference, name, T_base, mu, rho, dH0, eps_dk, sigma, T_grid, Cp_grid, H_grid):
     if name in mixture_reference.keys():
-        return Component_Dispersed(name, T_base, mu, rho, dH0, T_grid, Cp_grid, H_grid)
+        return Component_Dispersed(name, T_base, mu, rho, dH0, eps_dk, sigma, T_grid, Cp_grid, H_grid)
     else:
         print('mixture dispersed component with name ', name, ' not defined')
         return None
 
 
-def initialize_mixture_component_gas(mixture_reference, name, T_base, mu, rho, dH0, T_grid, Cp_grid, H_grid, viscosity_grid, heat_conductivity_grid, diffusivity_grid):
+def initialize_mixture_component_gas(mixture_reference, name, T_base, mu, rho, dH0, eps_dk, sigma, T_grid, Cp_grid, H_grid, viscosity_grid, heat_conductivity_grid, diffusivity_grid):
     if name in mixture_reference.keys():
-        return Component_Gas(name, T_base, mu, rho, dH0, T_grid, Cp_grid, H_grid, viscosity_grid, heat_conductivity_grid, diffusivity_grid)
+        return Component_Gas(name, T_base, mu, rho, dH0, eps_dk, sigma, T_grid, Cp_grid, H_grid, viscosity_grid, heat_conductivity_grid, diffusivity_grid)
     else:
         print('mixture gas component with name ', name, ' not defined')
         return None
 
 
 class Component:
-    def __init__(self, name, T_base, mu, rho, dH0, T_grid, Cp_grid, H_grid):
+    def __init__(self, name, T_base, mu, rho, dH0, eps_dk, sigma, T_grid, Cp_grid, H_grid):
         self.name = name
         self.mu = mu
         self.rho = rho
         self.dH0 = dH0
+        self.eps_dk = eps_dk
+        self.sigma = sigma
         self.T_base = T_base
         self.T_grid = T_grid
         self.Cp_grid = Cp_grid
@@ -96,8 +98,8 @@ class Component:
 
 
 class Component_Dispersed(Component):
-    def __init__(self, name, T_base, mu, rho, dH0, T_grid, Cp_grid, H_grid):
-        super().__init__(name, T_base, mu, rho, dH0, T_grid, Cp_grid, H_grid)
+    def __init__(self, name, T_base, mu, rho, dH0, eps_dk, sigma, T_grid, Cp_grid, H_grid):
+        super().__init__(name, T_base, mu, rho, dH0, eps_dk, sigma, T_grid, Cp_grid, H_grid)
         self.columns_mix = ['T [K]', 'Cp [Дж/кг-К]', 'H [Дж/кг]']
         self.data = pd.DataFrame(data=np.array([self.T_grid, self.Cp_grid, self.H_grid]).transpose(), index=self.T_grid, columns=self.columns_mix)
         # self.data.drop(index=0, inplace=True)
@@ -108,8 +110,8 @@ class Component_Dispersed(Component):
 
 
 class Component_Gas(Component):
-    def __init__(self, name, T_base, mu, rho, dH0, T_grid, Cp_grid, H_grid, viscosity_grid, heat_conductivity_grid, diffusivity_grid):
-        super().__init__(name, T_base, mu, rho, dH0, T_grid, Cp_grid, H_grid)
+    def __init__(self, name, T_base, mu, rho, dH0, eps_dk, sigma, T_grid, Cp_grid, H_grid, viscosity_grid, heat_conductivity_grid, diffusivity_grid):
+        super().__init__(name, T_base, mu, rho, dH0, eps_dk, sigma, T_grid, Cp_grid, H_grid)
         self.viscosity_grid = viscosity_grid
         self.heat_conductivity_grid = heat_conductivity_grid
         self.diffusivity_grid = diffusivity_grid
