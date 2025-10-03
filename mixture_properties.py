@@ -38,11 +38,11 @@ dir_solution = 'solution'
 path_data = ''.join((os.getcwd(), '\\', 'data'))
 terra_props = 'props_TERRA.txt'
 chemkin_path = 'ker_mixture'
-chemkin_thermo = 'ker_mixture.dat'
+chemkin_thermo = 'thermDagaut.dat'
 chemkin_transport = 'transpDagaut.dat'
 chemkin_reactions = 'ker_mixture.inp'
 generate_new_db_thermo = False
-generate_new_db_transport = True
+generate_new_db_transport = False
 
 file_config = 'run_config.ini'
 file_MPL = 'MPL_constants.txt'
@@ -88,11 +88,21 @@ g_BHD = {'C6H14': material.Component(0.091, material.Source.T),
          'C10H22': material.Component(0.727, material.Source.T),
          'C6H6': material.Component(0.182, material.Source.T)}
 
+# KERO
+# g_KERO = {
+#     'C9H12  C(CH=CH2)': material.Component(0.132, material.Source.C),
+#     'C10H22 n-Decane': material.Component(0.767, material.Source.C),
+#     'C9H18 1-Nonene': material.Component(0.101, material.Source.C)
+# }
+
+# DAGAUT
 g_KERO = {
-    'C9H12  C(CH=CH2)': material.Component(0.132, material.Source.C),
-    'C10H22 n-Decane': material.Component(0.767, material.Source.C),
-    'C9H18 1-Nonene': material.Component(0.101, material.Source.C)
+    'NC10H22': material.Component(0.74, material.Source.C),
+    'PHC3H7': material.Component(0.15, material.Source.C),
+    'CYC9H18': material.Component(0.11, material.Source.C)
 }
+
+
 
 # g_KERO = {'C10H20 KERO': material.Component(1, material.Source.C)}
 
@@ -193,7 +203,10 @@ print(components_with_source_T)
 
 
 # Инициализация химической кинетики
-components_chemkin = kin.initiate_kinetics(''.join((path_data, '\\', chemkin_path, '\\', chemkin_thermo.replace('.dat', '.db'))), components_with_source_C)
+# Если не передавать T_last - данные будут обрезаны по минимально доступной верхней границе полинома компонента CHEMKIN
+# Для компонент TERRA данные всё равно будут сгенерированы до T_last, т.к. оно передается позже в material
+components_chemkin = kin.initiate_kinetics(''.join((path_data, '\\', chemkin_path, '\\', chemkin_thermo.replace('.dat', '.db'))), components_with_source_C, T_last=T_last)
+# components_chemkin = kin.initiate_kinetics(''.join((path_data, '\\', chemkin_path, '\\', chemkin_thermo.replace('.dat', '.db'))), components_with_source_C)
 
 
 

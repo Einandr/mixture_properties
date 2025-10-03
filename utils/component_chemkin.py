@@ -12,7 +12,7 @@ cal = 4184       # [кДж] термическая калория, исполь�
 
 
 class Component:
-    def __init__(self, name, date, formula, phase, T_low, T_mid, T_high, atomic, a1_low, a2_low, a3_low, a4_low, a5_low, a6_low, a7_low, a1_high, a2_high, a3_high, a4_high, a5_high, a6_high, a7_high, dT, T_base, T0):
+    def __init__(self, name, date, formula, phase, T_low, T_mid, T_high, atomic, a1_low, a2_low, a3_low, a4_low, a5_low, a6_low, a7_low, a1_high, a2_high, a3_high, a4_high, a5_high, a6_high, a7_high, dT, T_base, T0, T_last=None):
         self.name = name
         self.date = date
         self.formula = formula
@@ -20,6 +20,7 @@ class Component:
         self.T_low = T_low
         self.T_mid = T_mid
         self.T_high = T_high
+        self.T_last = T_last
         self.atomic = atomic
         self.T_range = np.array([T_low, T_mid, T_high])
         self.a = np.array([[a1_low, a2_low, a3_low, a4_low, a5_low, a6_low, a7_low], [a1_high, a2_high, a3_high, a4_high, a5_high, a6_high, a7_high]])
@@ -91,13 +92,16 @@ class Component:
         rounded_T_low = math.ceil(self.T_low / 100) * 100       # Округляем T_low до ближайшего целого, кратного 100, но не меньше T_low
         if rounded_T_low < self.T_low:
             rounded_T_low += 100
-        T_grid = np.arange(rounded_T_low, self.T_high + self.dT, self.dT)   # Создаем массив температур, начиная с rounded_T_low и заканчивая T_high
+        T_upper_bound = self.T_high                                 # Определяем верхнюю границу температурной сетки
+        if hasattr(self, 'T_last') and self.T_last is not None:
+            T_upper_bound = self.T_last
+        T_grid = np.arange(rounded_T_low, T_upper_bound + self.dT, self.dT)   # Создаем массив температур, начиная с rounded_T_low и заканчивая T_high
         print('before deletion T_low:', T_grid)
         T_grid = T_grid[1:]                                     # Удаляем первое значение - это либо T_low, либо rounded_T_low
         T_grid = np.insert(T_grid, 0, self.T_low)               # Добавляем обратно T_low
-        T_grid = T_grid[T_grid <= self.T_high]                  # Убедимся, что значения не превышают T_high
-        if T_grid[-1] != self.T_high:                           # Проверяем, содержится ли T_high в массиве T_grid
-            T_grid = np.append(T_grid, self.T_high)
+        T_grid = T_grid[T_grid <= T_upper_bound]                # Убедимся, что значения не превышают T_upper_bound
+        if T_grid[-1] != T_upper_bound:                         # Проверяем, содержится ли T_upper_bound в массиве T_grid
+            T_grid = np.append(T_grid, T_upper_bound)
         print('after checking T_grid:', T_grid)
         return T_grid
 
@@ -189,6 +193,9 @@ class Component:
 
     def update_T_grid(self):
         self.T_grid = np.append(self.T_grid, [self.T_mid, self.T_base])
+        # добавляем T_high на случай если T_last > T_high и мы его проскочили при создании T_grid
+        if hasattr(self, 'T_last') and self.T_last is not None and self.T_last > self.T_high:
+            self.T_grid = np.append(self.T_grid, self.T_high)
         self.T_grid = np.unique(self.T_grid)
         self.T_grid.sort()
         return None

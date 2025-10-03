@@ -32,9 +32,9 @@ def read_chemkin_file(path):
     return species_names
 
 
-def initiate_kinetics(path_db, components_names):
+def initiate_kinetics(path_db_thermo, components_names, T_last=None, path_db_transport=None):
     # Подключение к базе данных
-    conn = sqlite3.connect(path_db)
+    conn = sqlite3.connect(path_db_thermo)
     cursor = conn.cursor()
 
     # Получаем список доступных в базе имен компонентов
@@ -49,7 +49,7 @@ def initiate_kinetics(path_db, components_names):
 
     if missing_components:
         raise ValueError(
-            f"Следующие компоненты отсутствуют в базе данных: {', '.join(missing_components)}"
+            f"Следующие компоненты отсутствуют в БД THERMO: {', '.join(missing_components)}"
         )
 
     # Если все компоненты найдены, продолжаем
@@ -119,7 +119,8 @@ def initiate_kinetics(path_db, components_names):
                 a7_high=a7_high,
                 dT=200,         # [K] температурная дельта
                 T_base=100,     # [K] температура начала таблицы
-                T0=298.15       # [K] температура для вычисления энтальпии образования
+                T0=298.15,       # [K] температура для вычисления энтальпии образования
+                T_last=T_last
             )
         )
 
@@ -165,7 +166,7 @@ def initiate_kinetics(path_db, components_names):
     #         self.query_select_trange = ''.join(('SELECT t_low, t_mid, t_high FROM thermo WHERE name=\'', name, '\''))
     #         self.query_select_a_low = ''.join(('SELECT a1_low, a2_low, a3_low, a4_low, a5_low, a6_low, a7_low FROM thermo WHERE name=\'', name, '\''))
     #         self.query_select_a_high = ''.join(('SELECT a1_high, a2_high, a3_high, a4_high, a5_high, a6_high, a7_high FROM thermo WHERE name=\'', name, '\''))
-    #         # self.conn = sqlite3.connect(path_db)
+    #         # self.conn = sqlite3.connect(path_db_thermo)
     #         # cursor = conn.cursor()
     #
     #         # date
