@@ -33,18 +33,18 @@ def read_chemkin_file(path):
 
 
 def initiate_kinetics(path_db_thermo, components_names, T_last=None, path_db_transport=None):
-    # Подключение к базе данных
-    conn = sqlite3.connect(path_db_thermo)
-    cursor = conn.cursor()
+    # Подключение к базе данных термодинамики
+    conn_thermo = sqlite3.connect(path_db_thermo)
+    cursor_thermo = conn_thermo.cursor()
 
     # Получаем список доступных в базе имен компонентов
-    cursor.execute('SELECT name FROM thermo')
-    species_names_db = [row[0] for row in cursor.fetchall()]
+    cursor_thermo.execute('SELECT name FROM thermo')
+    names = [row[0] for row in cursor_thermo.fetchall()]
 
     # Проверяем, все ли компоненты из components_names есть в базе
     missing_components = [
         name for name in components_names
-        if name not in species_names_db
+        if name not in names
     ]
 
     if missing_components:
@@ -52,16 +52,24 @@ def initiate_kinetics(path_db_thermo, components_names, T_last=None, path_db_tra
             f"Следующие компоненты отсутствуют в БД THERMO: {', '.join(missing_components)}"
         )
 
+    # Подключение к базе данных транспортных свойств, если путь передан
+    conn_transport = None
+    cursor_transport = None
+    if path_db_transport is not None:
+        conn_transport = sqlite3.connect(path_db_transport)
+        cursor_transport = conn_transport.cursor()
+
+
     # Если все компоненты найдены, продолжаем
     list_components = []
     for name in components_names:
-        cursor.execute('SELECT * FROM thermo WHERE name=?', (name,))
-        row = cursor.fetchone()
+        cursor_thermo.execute('SELECT * FROM thermo WHERE name=?', (name,))
+        row = cursor_thermo.fetchone()
         if not row:
             raise ValueError(f"Компонент {name} не найден в базе данных")
 
         # Получаем описание столбцов
-        columns = [desc[0] for desc in cursor.description]
+        columns = [desc[0] for desc in cursor_thermo.description]
 
         # Создаем словарь для сопоставления имен столбцов с их индексами
         column_indices = {column: index for index, column in enumerate(columns)}
@@ -92,6 +100,31 @@ def initiate_kinetics(path_db_thermo, components_names, T_last=None, path_db_tra
 
         print('check kinetics initiate: name, date, formula, phase, atomic, t_low, t_mid, t_high, a1_low, a2_low, a3_low, a4_low, a5_low, a6_low, a7_low, a1_high, a2_high, a3_high, a4_high, a5_high, a6_high, a7_high',
               name, date, formula, phase, atomic, t_low, t_mid, t_high, a1_low, a2_low, a3_low, a4_low, a5_low, a6_low, a7_low, a1_high, a2_high, a3_high, a4_high, a5_high, a6_high, a7_high)
+
+        # Извлечение данных из базы данных транспортных свойств, если она подключена
+        geom_index = None                               # not used yet
+        L_J_potential_well_depth = 100                  # default value
+        L_J_collision_diameter = 4                      # default value
+        dipole_momentum = None                          # not used yet
+        polarizability = None                           # not used yet
+        rotational_relaxation_collision_number = None   # not used yet
+        comment = None                                  # not used yet
+
+        if conn_transport is not None:
+            cursor_transport.execute('SELECT * FROM transport WHERE name=?', (name,))
+            transport_row = cursor_transport.fetchone()
+            if transport_row:
+                transport_columns = [desc[0] for desc in cursor_transport.description]
+                transport_column_indices = {column: index for index, column in enumerate(transport_columns)}
+
+                geom_index = transport_row[transport_column_indices['geom_index']]
+                L_J_potential_well_depth = transport_row[transport_column_indices['L_J_potential_well_depth']]
+                L_J_collision_diameter = transport_row[transport_column_indices['L_J_collision_diameter']]
+                dipole_momentum = transport_row[transport_column_indices['dipole_momentum']]
+                polarizability = transport_row[transport_column_indices['polarizability']]
+                rotational_relaxation_collision_number = transport_row[transport_column_indices['rotational_relaxation_collision_number']]
+                comment = transport_row[transport_column_indices['comment']]
+
         # Создаем объект Component
         list_components.append(
             Component(
@@ -120,6 +153,8 @@ def initiate_kinetics(path_db_thermo, components_names, T_last=None, path_db_tra
                 dT=200,         # [K] температурная дельта
                 T_base=100,     # [K] температура начала таблицы
                 T0=298.15,       # [K] температура для вычисления энтальпии образования
+                eps_dk=L_J_potential_well_depth,
+                sigma=L_J_collision_diameter,
                 T_last=T_last
             )
         )
@@ -146,10 +181,10 @@ def initiate_kinetics(path_db_thermo, components_names, T_last=None, path_db_tra
     # # список доступных в базе имен компонентов
     # cursor.execute('select name FROM thermo')
     # try:
-    #     species_names_db = list(map(lambda x: x[0], cursor.fetchall()))
+    #     names = list(map(lambda x: x[0], cursor.fetchall()))
     # except IndexError:
-    #     species_names_db = []
-    # print('Species names available in DB: ', species_names_db)
+    #     names = []
+    # print('Species names available in DB: ', names)
     #
     # # список доступных в базе химических формул компонентов
     # cursor.execute('select formula FROM thermo')
@@ -251,6 +286,10 @@ def initiate_kinetics(path_db_thermo, components_names, T_last=None, path_db_tra
     #     TC = GetComponentFromDB(name)           # Temporary Component - объект со свойствами из базы данных
     #     list_components.append(Component(TC.name, TC.date, TC.formula, TC.phase, TC.T_range[0], TC.T_range[1], TC.T_range[2], TC.atomic, TC.a_low[0], TC.a_low[1], TC.a_low[2], TC.a_low[3], TC.a_low[4], TC.a_low[5], TC.a_low[6], TC.a_high[0], TC.a_high[1], TC.a_high[2], TC.a_high[3], TC.a_high[4], TC.a_high[5], TC.a_high[6], dT, T_base, T0))
 
+
+    conn_thermo.close()
+    if conn_transport is not None:
+        conn_transport.close()
+
     print('Components names in CHEMKIN order: ', components_names)
-    conn.close()
     return list_components

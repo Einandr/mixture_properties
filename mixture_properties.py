@@ -205,7 +205,8 @@ print(components_with_source_T)
 # Инициализация химической кинетики
 # Если не передавать T_last - данные будут обрезаны по минимально доступной верхней границе полинома компонента CHEMKIN
 # Для компонент TERRA данные всё равно будут сгенерированы до T_last, т.к. оно передается позже в material
-components_chemkin = kin.initiate_kinetics(''.join((path_data, '\\', chemkin_path, '\\', chemkin_thermo.replace('.dat', '.db'))), components_with_source_C, T_last=T_last)
+components_chemkin = kin.initiate_kinetics(''.join((path_data, '\\', chemkin_path, '\\', chemkin_thermo.replace('.dat', '.db'))), components_with_source_C, T_last=T_last, path_db_transport=''.join((path_data, '\\', chemkin_path, '\\', chemkin_transport.replace('.dat', '.db'))))
+# components_chemkin = kin.initiate_kinetics(''.join((path_data, '\\', chemkin_path, '\\', chemkin_thermo.replace('.dat', '.db'))), components_with_source_C, T_last=T_last)
 # components_chemkin = kin.initiate_kinetics(''.join((path_data, '\\', chemkin_path, '\\', chemkin_thermo.replace('.dat', '.db'))), components_with_source_C)
 
 

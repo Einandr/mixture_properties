@@ -12,7 +12,7 @@ cal = 4184       # [кДж] термическая калория, исполь�
 
 
 class Component:
-    def __init__(self, name, date, formula, phase, T_low, T_mid, T_high, atomic, a1_low, a2_low, a3_low, a4_low, a5_low, a6_low, a7_low, a1_high, a2_high, a3_high, a4_high, a5_high, a6_high, a7_high, dT, T_base, T0, T_last=None):
+    def __init__(self, name, date, formula, phase, T_low, T_mid, T_high, atomic, a1_low, a2_low, a3_low, a4_low, a5_low, a6_low, a7_low, a1_high, a2_high, a3_high, a4_high, a5_high, a6_high, a7_high, dT, T_base, T0, eps_dk, sigma, T_last=None):
         self.name = name
         self.date = date
         self.formula = formula
@@ -65,9 +65,8 @@ class Component:
 
         self.rho = 0    # Заглушка для газа
         # Значения по умолчанию для воздуха для транспортных свойств
-        self.sigma = 4
-        self.eps_dk = 100
-        self.delta = 0
+        self.eps_dk = eps_dk
+        self.sigma = sigma
 
         self.columns_mix = ['T [K]', 'Cp [Дж/кг-К]', 'H [Дж/кг]', 'Mu_visc [kg/m-s]', 'Lambda [W/m-K]', 'D [m^2/s]']
         self.vector_viscosity = np.vectorize(self._viscosity_kinetic_theory)
