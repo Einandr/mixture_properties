@@ -4,7 +4,7 @@ import os
 import numpy as np
 
 # USER IMPORTS
-from utils.generate_data_base import *
+from utils.generate_db_thermo import *
 from utils import initiate_kinetics as kin
 
 
@@ -23,12 +23,12 @@ file_db_output = chemkin_thermo.replace('.dat', '.db')
 
 
 dir_run = 'RUN_thermo_converter'
-generate_new_data_base = True
+generate_new_db_thermo = True
 
 
 # Создаем файл базы данных в той же директории, где находится файл CHEMKIN THERMO
-if generate_new_data_base:
-    generate_data_base(path_data, chemkin_thermo, path_data, file_db_output)
+if generate_new_db_thermo:
+    generate_db_thermo(path_data, chemkin_thermo, path_data, file_db_output)
 
 # Инициализация химической кинетики
 get_species_names = kin.read_chemkin_file(''.join((path_data, '/', chemkin_reactions)))

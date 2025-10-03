@@ -22,7 +22,8 @@ from enum import Enum
 from typing import Dict, List, Set, Optional
 
 # USER IMPORTS
-from utils.generate_data_base import *
+from utils.generate_db_thermo import *
+from utils.generate_db_transport import *
 from utils import initiate_kinetics as kin
 from utils import component_terra as tc
 from utils import component_mixture as mc
@@ -38,9 +39,10 @@ path_data = ''.join((os.getcwd(), '\\', 'data'))
 terra_props = 'props_TERRA.txt'
 chemkin_path = 'ker_mixture'
 chemkin_thermo = 'ker_mixture.dat'
-chemkin_trans = 'ker_mixture.trans'
+chemkin_transport = 'transpDagaut.dat'
 chemkin_reactions = 'ker_mixture.inp'
-generate_new_chemkin_db = False
+generate_new_db_thermo = False
+generate_new_db_transport = True
 
 file_config = 'run_config.ini'
 file_MPL = 'MPL_constants.txt'
@@ -61,10 +63,13 @@ df_terra['name'] = df_terra['name'].str.strip()
 df_terra.set_index('name', inplace=True)
 
 
+# Создаем файлы БД в той же директории, где находится файлы CHEMKIN THERMO, CHEMKIN TRANSPORT
+if generate_new_db_thermo:
+    generate_db_thermo(''.join((path_data, '\\', chemkin_path)), chemkin_thermo, ''.join((path_data, '\\', chemkin_path)), chemkin_thermo.replace('.dat', '.db'))
+if generate_new_db_transport:
+    generate_db_transport(''.join((path_data, '\\', chemkin_path)), chemkin_transport, ''.join((path_data, '\\', chemkin_path)), chemkin_transport.replace('.dat', '.db'))
 
-# Создаем файл базы данных в той же директории, где находится файл CHEMKIN THERMO
-if generate_new_chemkin_db:
-    generate_data_base(''.join((path_data, '\\', chemkin_path)), chemkin_thermo, ''.join((path_data, '\\', chemkin_path)), chemkin_thermo.replace('.dat', '.db'))
+
 
 
 g_O2 = {'O2': material.Component(1, material.Source.C)}
@@ -82,7 +87,6 @@ g_C9H18 = {'C9H18': material.Component(1, material.Source.T)}
 g_BHD = {'C6H14': material.Component(0.091, material.Source.T),
          'C10H22': material.Component(0.727, material.Source.T),
          'C6H6': material.Component(0.182, material.Source.T)}
-
 
 g_KERO = {
     'C9H12  C(CH=CH2)': material.Component(0.132, material.Source.C),
@@ -194,7 +198,7 @@ components_chemkin = kin.initiate_kinetics(''.join((path_data, '\\', chemkin_pat
 
 
 
-# dispersed material initialization
+# material initialization
 gas_material = material.Material(gas_mixture_reference, 'mat_gas', df_terra, components_chemkin, show_plots, True, T0, T_base, dT_phase_transition, T_first, T_last, dT)
 
 

@@ -16,7 +16,7 @@ import sqlite3
 #work_path = 'D:\\Simulation\\!Python_CIAM\\2_Comb_DES\\'                       # рабочая директория проекта
 #f_thermo = 'Ya_Kerosene_Air.dat'
 
-def generate_data_base(dir_thermo, file_thermo, dir_output, file_output):
+def generate_db_thermo(dir_thermo, file_thermo, dir_output, file_output):
     '''
     :param dir_thermo: Директория с файлом THERMO CHEMKIN
     :param file_thermo: Имя файла THERMO CHEMKIN
