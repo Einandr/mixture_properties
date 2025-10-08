@@ -141,7 +141,7 @@ show_plots = True
 
 # Universal gas constant [J/mol-K]
 R0 = 8.31
-# Temperature for Formatiom Enthalpy
+# Temperature for Formation Enthalpy
 T0 = 298.15
 # Low temperature point in piecewise-linear Cp data - needed to calculate H for correctly fit Terra values
 T_base = 100

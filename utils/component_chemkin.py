@@ -103,10 +103,13 @@ class Component:
         T_upper_bound = self.T_high                                 # Определяем верхнюю границу температурной сетки
         if hasattr(self, 'T_last') and self.T_last is not None:
             T_upper_bound = self.T_last
-        T_grid = np.arange(rounded_T_low, T_upper_bound + self.dT, self.dT)   # Создаем массив температур, начиная с rounded_T_low и заканчивая T_high
+        T_grid = np.arange(rounded_T_low, T_upper_bound + self.dT, self.dT, dtype=float)   # Создаем массив температур, начиная с rounded_T_low и заканчивая T_high
         print('before deletion T_low:', T_grid)
+        print('correct T_low:', self.T_low)
         T_grid = T_grid[1:]                                     # Удаляем первое значение - это либо T_low, либо rounded_T_low
         T_grid = np.insert(T_grid, 0, self.T_low)               # Добавляем обратно T_low
+        print(T_grid)
+        print(T_grid.dtype)
         T_grid = T_grid[T_grid <= T_upper_bound]                # Убедимся, что значения не превышают T_upper_bound
         if T_grid[-1] != T_upper_bound:                         # Проверяем, содержится ли T_upper_bound в массиве T_grid
             T_grid = np.append(T_grid, T_upper_bound)

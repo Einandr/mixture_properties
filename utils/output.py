@@ -128,6 +128,9 @@ def get_prop_from_yaml(df, str_start, str_end, quant):
 
 
 def output_props(name, is_gas, T_base, T0, df, df_constants):
+    print('from output_props T0 and df:', T0, df)
+
+
     # Make YAML file for QUBIC calculations
     if is_gas:
         file_yaml_out = ''.join(('g_qubiq_', name, '.yaml'))
@@ -194,8 +197,8 @@ def output_props(name, is_gas, T_base, T0, df, df_constants):
 
         if value == 'Cp [J/kg-K]':
             # if we want float precision:
-            df_for_dict[T_header] = df[T_header].map('{:.1f}'.format).astype(float)
-            df_for_dict[value] = df[value].map('{:.1f}'.format).astype(float)
+            df_for_dict[T_header] = df[T_header].map('{:.2f}'.format).astype(float)
+            df_for_dict[value] = df[value].map('{:.2f}'.format).astype(float)
             # if integer precision is enough:
             # df_for_dict[T_header] = df[T_header].astype(int)
             # df_for_dict[value] = df[value].astype(int)
@@ -230,7 +233,7 @@ def output_props(name, is_gas, T_base, T0, df, df_constants):
             return_df_for_dict = df_for_dict.copy()
         else:
             # if we want float precision:
-            df_for_dict[T_header] = df[T_header].map('{:.3e}'.format).astype(float)
+            df_for_dict[T_header] = df[T_header].map('{:.2f}'.format).astype(float)
             df_for_dict[value] = df[value].map('{:.3e}'.format).astype(float)
             df_for_dict.set_index(T_header, drop=True, inplace=True)
             df_for_dict.drop(df_for_dict[df_for_dict.index < T_base].index, inplace=True)
@@ -247,7 +250,9 @@ def output_props(name, is_gas, T_base, T0, df, df_constants):
 
         data_map = CommentedMap()
         for index, row in df_for_dict.iterrows():
+            print('making props_for_yaml index value:', index, value)
             data_map[float(index)] = float(row[value])
+            print('data map:', data_map)
         props_for_yaml.yaml_set_comment_before_after_key(key, before=f'\n{value}\n')
         props_for_yaml[key] = data_map
     yaml = YAML()
@@ -279,9 +284,9 @@ def output_props(name, is_gas, T_base, T0, df, df_constants):
                 print(key, value)
                 strlist = return_df_for_dict[value].values.tolist()
                 # if we want float precision:
-                # f.write(str([float('{:.1f}'.format(x)) for x in strlist]))
+                f.write(str([float('{:.2f}'.format(x)) for x in strlist]))
                 # if integer precision is enough:
-                f.write(str([int(x) for x in strlist]))
+                # f.write(str([int(x) for x in strlist]))
 
 
     if is_gas:
@@ -291,7 +296,7 @@ def output_props(name, is_gas, T_base, T0, df, df_constants):
         print('before Cp journal call')
         str_start_Cp = ''.join(('/define/materials/change-create/', name, ' mixture-template y piecewise-linear '))
         str_end_Cp = ' n n n n\n'
-        prop_Cp = get_prop_from_yaml(props_for_yaml['heat_capacity'], str_start_Cp, str_end_Cp, '1')
+        prop_Cp = get_prop_from_yaml(props_for_yaml['heat_capacity'], str_start_Cp, str_end_Cp, '.01')
 
         str_start_Lambda = ''.join(('/define/materials/change-create/', name, ' mixture-template n y piecewise-linear '))
         str_end_Lambda = ' n n n\n'
@@ -318,7 +323,7 @@ def output_props(name, is_gas, T_base, T0, df, df_constants):
     else:
         str_start_Cp = ''.join(('/define/materials/change-create/', name, ' mixture-template n y piecewise-linear '))
         str_end_Cp = ' n n n n n n\n'
-        prop_Cp = get_prop_from_yaml(props_for_yaml['heat_capacity'], str_start_Cp, str_end_Cp, '1')
+        prop_Cp = get_prop_from_yaml(props_for_yaml['heat_capacity'], str_start_Cp, str_end_Cp, '.01')
         with open(''.join(('p_fluent_', name, '.jou')), 'w') as f:
             f.write(';Cp\n')
             f.write(prop_Cp)
