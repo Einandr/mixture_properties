@@ -25,8 +25,6 @@ from typing import Dict, List, Set, Optional
 from utils.generate_db_thermo import *
 from utils.generate_db_transport import *
 from utils import initiate_kinetics as kin
-from utils import component_terra as tc
-from utils import component_mixture as mc
 from utils import material
 
 
@@ -96,10 +94,19 @@ g_BHD = {'C6H14': material.Component(0.091, material.Source.T),
 # }
 
 # DAGAUT
+# g_KERO = {
+#     'NC10H22': material.Component(0.74, material.Source.C),
+#     'PHC3H7': material.Component(0.15, material.Source.C),
+#     'CYC9H18': material.Component(0.11, material.Source.C)
+# }
+
+# TEST
 g_KERO = {
-    'NC10H22': material.Component(0.74, material.Source.C),
-    'PHC3H7': material.Component(0.15, material.Source.C),
-    'CYC9H18': material.Component(0.11, material.Source.C)
+    'C7H1335': material.Component(0.2, material.Source.C),
+    'C7H1313': material.Component(0.2, material.Source.C),
+    'C7H1324': material.Component(0.2, material.Source.C),
+    'C7H1314': material.Component(0.2, material.Source.C),
+    'C7H1347': material.Component(0.2, material.Source.C)
 }
 
 
@@ -116,7 +123,9 @@ g_KERO = {
 # 'C9H12  propylben'
 
 
-
+gas_mixture_reference = {'O2': g_O2,
+                         'N2': g_N2,
+                         'CO2': g_CO2}
 
 # gas_mixture_reference = {'O2': g_O2,
 #                          'N2': g_N2,
@@ -155,27 +164,27 @@ T_last = 6000
 dT = 100
 
 
-def check_source_conflicts(mixture: Dict) -> Dict[str, Set[material.Source]]:
-    component_sources = {}
-    for components_dict in mixture.values():
-        for component_name, component in components_dict.items():
-            if component_name not in component_sources:
-                component_sources[component_name] = set()
-            component_sources[component_name].add(component.source)
-    return component_sources
-
-
-def get_components_by_source(mixture: Dict, source: material.Source) -> List[str]:
-    components = []
-    component_sources = check_source_conflicts(mixture)
-    for component_name, sources in component_sources.items():
-        if source in sources and len(sources) == 1:
-            components.append(component_name)
-    return components
+# def check_source_conflicts(mixture: Dict) -> Dict[str, Set[material.Source]]:
+#     component_sources = {}
+#     for components_dict in mixture.values():
+#         for component_name, component in components_dict.items():
+#             if component_name not in component_sources:
+#                 component_sources[component_name] = set()
+#             component_sources[component_name].add(component.source)
+#     return component_sources
+#
+#
+# def get_components_by_source(mixture: Dict, source: material.Source) -> List[str]:
+#     components = []
+#     component_sources = check_source_conflicts(mixture)
+#     for component_name, sources in component_sources.items():
+#         if source in sources and len(sources) == 1:
+#             components.append(component_name)
+#     return components
 
 
 # Проверка конфликтов
-component_sources = check_source_conflicts(gas_mixture_reference)
+component_sources = material.check_source_conflicts(gas_mixture_reference)
 conflicts = [
     component_name
     for component_name, sources in component_sources.items()
@@ -189,8 +198,8 @@ if conflicts:
     raise ValueError("Обнаружены конфликты источников. Исправьте данные и повторите попытку.")
 
 # Составление списков
-components_with_source_C = get_components_by_source(gas_mixture_reference, material.Source.C)
-components_with_source_T = get_components_by_source(gas_mixture_reference, material.Source.T)
+components_with_source_C = material.get_components_by_source(gas_mixture_reference, material.Source.C)
+components_with_source_T = material.get_components_by_source(gas_mixture_reference, material.Source.T)
 
 print("Компоненты с источником CHEMKIN:")
 print(components_with_source_C)
