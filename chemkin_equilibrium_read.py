@@ -134,7 +134,7 @@ for index, row in df.iterrows():
     df.loc[index, 'Mu_visc [kg/m-s]'] = gas_material.get_mixture_viscosity(mass_fractions_dict, T)
     df.loc[index, 'Lambda [W/m-K]'] = gas_material.get_mixture_heat_conductivity(mass_fractions_dict, T)
     df.loc[index, 'D [m^2/s]'] = gas_material.get_mixture_diffusivity(mass_fractions_dict, T)
-    df.loc[index, 'M [kg/mol]'] = gas_material.get_mixture_mu(mass_fractions_dict)
+    df.loc[index, 'M [g/mol]'] = gas_material.get_mixture_mu(mass_fractions_dict)
     df.loc[index, 'R [J/kg-K]'] = gas_material.get_mixture_R(mass_fractions_dict)
     df.loc[index, 'eps_dk [Kelvins]'] = gas_material.get_mixture_eps_dk(mass_fractions_dict)
     df.loc[index, 'sigma [angstroms]'] = gas_material.get_mixture_sigma(mass_fractions_dict)
@@ -152,7 +152,7 @@ else:
     filtered_df = df
 
 average_values = {
-    'M [kg/mol]': filtered_df['M [kg/mol]'].mean(),
+    'M [g/mol]': filtered_df['M [g/mol]'].mean(),
     'R [J/kg-K]': filtered_df['R [J/kg-K]'].mean(),
     'eps_dk [Kelvins]': filtered_df['eps_dk [Kelvins]'].mean(),
     'sigma [angstroms]': filtered_df['sigma [angstroms]'].mean(),
@@ -165,7 +165,7 @@ else:
     average_values['dH0 [J/kg]'] = None
 
 df_average_properties = pd.DataFrame({
-    'M [kg/mol]': [average_values['M [kg/mol]']],
+    'M [g/mol]': [average_values['M [g/mol]']],
     'R [J/kg-K]': [average_values['R [J/kg-K]']],
     'dH0 [J/kg]': [average_values['dH0 [J/kg]']],
     'eps_dk [Kelvins]': [average_values['eps_dk [Kelvins]']],
@@ -173,7 +173,7 @@ df_average_properties = pd.DataFrame({
 })
 
 df_average_properties.to_excel('material_average_properties.xlsx', index=False)
-selected_df = df[['T [K]', 'Cp [J/kg-K]', 'H [J/kg]', 'Mu_visc [kg/m-s]', 'Lambda [W/m-K]', 'D [m^2/s]', 'M [kg/mol]', 'R [J/kg-K]']]
+selected_df = df[['T [K]', 'Cp [J/kg-K]', 'H [J/kg]', 'Mu_visc [kg/m-s]', 'Lambda [W/m-K]', 'D [m^2/s]', 'M [g/mol]', 'R [J/kg-K]']]
 selected_df.to_excel('material_selected_properties.xlsx', index=False)
 
 path_output_material = 'material'

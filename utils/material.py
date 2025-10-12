@@ -253,6 +253,7 @@ class Material:
                         result += comp.get_H(T) * value
         return result
 
+    # Вышло в грам на моль
     def get_mixture_mu(self, mass_fractions_dict):
         result = 0
         if isinstance(next(iter(mass_fractions_dict.values())), Component):
@@ -269,19 +270,20 @@ class Material:
         return 1 / result
 
     def get_mixture_R(self, mass_fractions_dict):
-        result = 0
-        if isinstance(next(iter(mass_fractions_dict.values())), Component):
-            for key, component in mass_fractions_dict.items():
-                for comp in self.components:
-                    if key == comp.name:
-                        # print('mixture components mu: ', key, comp.get_mu(), value)
-                        result += component.value / comp.get_mu()
-        else:
-            for key, value in mass_fractions_dict.items():
-                for comp in self.components:
-                    if key == comp.name:
-                        result += value / comp.get_mu()
-        return R0 / result
+        # result = 0
+        # if isinstance(next(iter(mass_fractions_dict.values())), Component):
+        #     for key, component in mass_fractions_dict.items():
+        #         for comp in self.components:
+        #             if key == comp.name:
+        #                 # print('mixture components mu: ', key, comp.get_mu(), value)
+        #                 result += component.value / comp.get_mu()
+        # else:
+        #     for key, value in mass_fractions_dict.items():
+        #         for comp in self.components:
+        #             if key == comp.name:
+        #                 result += value / comp.get_mu()
+        # mixture_mu = 1 / result
+        return R0 / self.get_mixture_mu(mass_fractions_dict) * 1000
 
     def get_mixture_rho(self, mass_fractions_dict):
         result = 0

@@ -9,7 +9,7 @@ from pathlib import Path
 
 
 verify_CHEMKIN = True
-verify_TERRA = False
+verify_TERRA = True
 GOST_plots = False
 set_x_limit = False
 
@@ -17,6 +17,7 @@ style_C = '-'       # CHEMKIN
 style_T = '--'      # TERRA
 line_width = 2
 x_limit = 3000
+terra_Y_norm_factor = 15.7596
 
 verify_sources = [verify_CHEMKIN, verify_TERRA]
 number_of_sources = sum(verify_sources)
@@ -29,11 +30,29 @@ dir_run = 'RUN_materials_verification'
 # Тут просто добавляем или удаляем необходимые материалы
 if verify_CHEMKIN:
     df_chemkin_01 = pd.read_excel(r'D:\YASIM\VORON\2025_08_KEROSENE_PROPS\RUN_chemkin_equilibrium\material_selected_properties.xlsx', index_col='T [K]')
+    df_chemkin_02 = pd.read_excel(r'D:\YASIM\VORON\2025_08_KEROSENE_PROPS\RUN_chemkin_equilibrium\material_with_properties.xlsx', index_col='T [K]')
+
 
 
 # Тут просто добавляем или удаляем необходимые материалы
 if verify_TERRA:
-    df_terra_01 = pd.read_excel(r'D:\YASIM\VORON\2025_08_KEROSENE_PROPS\RUN_chemkin_equilibrium\material_selected_properties.xlsx', index_col='T [K]')
+    df_terra_01 = pd.read_excel(r'D:\YASIM\VORON\2025_08_KEROSENE_PROPS\terra_results_SI.xlsx', index_col='   T', header=1)
+    df_terra_01.columns = df_terra_01.columns.str.strip()
+    new_columns = []
+    for col in df_terra_01.columns:
+        if col not in {'p', 'T', 'v', 'S', 'I', 'U', 'M', 'Cp', 'k', 'Cp\'', 'k\'', 'Ap', 'Bv', 'Gt', 'MMg', 'Rg', 'Cpg', 'kg', 'Cp\'g', 'k\'g', 'Mu', 'Lt', 'Lt\'', 'Pr', 'Pr\'', 'A', 'z'}:
+            new_columns.append(f'Y_{col}')
+            df_terra_01[col] = df_terra_01[col] / terra_Y_norm_factor
+        else:
+            new_columns.append(col)
+    df_terra_01.columns = new_columns
+    df_terra_01 = df_terra_01.rename(columns={'Cp\'': 'Cp [J/kg-K]', 'I': 'H [J/kg]', 'MMg': 'M [g/mol]', 'Rg': 'R [J/kg-K]', 'Mu': 'Mu_visc [kg/m-s]', 'Lt': 'Lambda [W/m-K]'})
+    df_terra_01['Cp [J/kg-K]'] = df_terra_01['Cp [J/kg-K]']*1000
+    df_terra_01['H [J/kg]'] = df_terra_01['H [J/kg]']*1000
+
+
+
+
 
 path_run = ''.join((path, '/', dir_run))
 Path(path_run).mkdir(parents=True, exist_ok=True)
@@ -158,14 +177,23 @@ def plot_result(pic_name, ylabel, tuple_of_data):
 
 
 # CHEMKIN
-if verify_CHEMKIN:
-    plot_result('01_Cp', r'$Cp\ (\frac{Дж}{кг \cdot К})$', ((df_chemkin_01, ['Cp [J/kg-K]'], [style_C], ['CHEMKIN - Cp'], [0, 80], [0.9], [-0.3], [-0.1]),))
-    plot_result('02_H', r'$H\ (\frac{Дж}{кг})$', ((df_chemkin_01, ['H [J/kg]'], [style_C], ['CHEMKIN - H'], [0, 80], [0.9], [-0.3], [-0.1]),))
-    plot_result('03_mu', r'$\mu (\frac{кг}{м \cdot с})$', ((df_chemkin_01, ['Mu_visc [kg/m-s]'], [style_C], ['CHEMKIN - $\mu$'], [0, 80], [0.9], [-0.3], [-0.1]),))
-    plot_result('04_lambda', r'$\lambda (\frac{Вт}{м \cdot К})$', ((df_chemkin_01, ['Lambda [W/m-K]'], [style_C], ['CHEMKIN - $\lambda$'], [0, 80], [0.9], [-0.3], [-0.1]),))
+if verify_CHEMKIN and verify_TERRA:
+    plot_result('01_Cp', r'$Cp\ (\frac{Дж}{кг \cdot К})$', ((df_chemkin_01, ['Cp [J/kg-K]'], [style_C], ['CHEMKIN - Cp'], [0, 80], [0.9], [-0.3], [-0.1]),
+                                                            (df_terra_01, ['Cp [J/kg-K]'], [style_T], ['TERRA - Cp'], [0, 80], [0.9], [-0.3], [-0.1])))
+    plot_result('02_H', r'$H\ (\frac{Дж}{кг})$', ((df_chemkin_01, ['H [J/kg]'], [style_C], ['CHEMKIN - H'], [0, 80], [0.9], [-0.3], [-0.1]),
+                                                  (df_terra_01, ['H [J/kg]'], [style_T], ['TERRA - H'], [0, 80], [0.9], [-0.3], [-0.1])))
+    plot_result('03_mu', r'$\mu (\frac{кг}{м \cdot с})$', ((df_chemkin_01, ['Mu_visc [kg/m-s]'], [style_C], ['CHEMKIN - $\mu$'], [0, 80], [0.9], [-0.3], [-0.1]),
+                                                           (df_terra_01, ['Mu_visc [kg/m-s]'], [style_T], ['TERRA - $\mu$'], [0, 80], [0.9], [-0.3], [-0.1])))
+    plot_result('04_lambda', r'$\lambda (\frac{Вт}{м \cdot К})$', ((df_chemkin_01, ['Lambda [W/m-K]'], [style_C], ['CHEMKIN - $\lambda$'], [0, 80], [0.9], [-0.3], [-0.1]),
+                                                                   (df_terra_01, ['Lambda [W/m-K]'], [style_T], ['TERRA - $\lambda$'], [0, 80], [0.9], [-0.3], [-0.1])))
     plot_result('05_D', r'$D (\frac{м^2}{с})$', ((df_chemkin_01, ['D [m^2/s]'], [style_C], ['CHEMKIN - D'], [0, 80], [0.9], [-0.3], [-0.1]),))
-    plot_result('06_M', r'$M (\frac{кг}{моль})$', ((df_chemkin_01, ['M [kg/mol]'], [style_C], ['CHEMKIN - M'], [0, 80], [0.9], [-0.3], [-0.1]),))
-    plot_result('07_R', r'$R (\frac{Дж}{кг \cdot К})$', ((df_chemkin_01, ['R [J/kg-K]'], [style_C], ['CHEMKIN - R'], [0, 80], [0.9], [-0.3], [-0.1]),))
+    plot_result('06_M', r'$M (\frac{кг}{моль})$', ((df_chemkin_01, ['M [g/mol]'], [style_C], ['CHEMKIN - M'], [0, 80], [0.9], [-0.3], [-0.1]),
+                                                   (df_terra_01, ['M [g/mol]'], [style_T], ['TERRA - M'], [0, 80], [0.9], [-0.3], [-0.1])))
+    plot_result('07_R', r'$R (\frac{Дж}{кг \cdot К})$', ((df_chemkin_01, ['R [J/kg-K]'], [style_C], ['CHEMKIN - R'], [0, 80], [0.9], [-0.3], [-0.1]),
+                                                         (df_terra_01, ['R [J/kg-K]'], [style_T], ['TERRA - R'], [0, 80], [0.9], [-0.3], [-0.1])))
+    plot_result('08_Y', r'$Y$', ((df_chemkin_02, ['Y_H2O', 'Y_CO2', 'Y_CO'], [style_C, style_C, style_C], ['CHEMKIN - массовая доля H2O', 'CHEMKIN - массовая доля CO2', 'CHEMKIN - массовая доля CO'], [0, 1], [0.1, 0.1, 0.1], [0.1, 0.1, 0.1], [-0.1, -0.1, 0.1]),
+                                 (df_terra_01, ['Y_H2O', 'Y_CO2', 'Y_CO'], [style_T, style_T, style_T], ['TERRA - массовая доля H2O', 'TERRA - массовая доля CO2', 'TERRA - массовая доля CO'], [0, 1], [0.1, 0.1, 0.1], [0.1, 0.1, 0.1], [-0.1, -0.1, 0.1])))
+
 
 
 
