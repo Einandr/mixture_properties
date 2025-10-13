@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pylab
 from pathlib import Path
+import mendeleev
 
 
 verify_CHEMKIN = True
@@ -33,25 +34,78 @@ if verify_CHEMKIN:
     df_chemkin_02 = pd.read_excel(r'D:\YASIM\VORON\2025_08_KEROSENE_PROPS\RUN_chemkin_equilibrium\material_with_properties.xlsx', index_col='T [K]')
 
 
+def get_molar_mass(formula):
+    # изменением массы в радикалах ионах +- пренебрегается
+    elements = re.findall('([A-Z][a-z]*)(\d*)', formula)
+    total_mass = 0.0
+    for element, count in elements:
+        count = int(count) if count else 1  # Если количество не указано, считаем 1
+        try:
+            atomic_mass = mendeleev.element(element).atomic_weight
+            total_mass += atomic_mass * count
+            print(f"Ннайден элемент: {element} из формулы {formula} с атомной массой {atomic_mass}")
+        except:
+            print(f"Не удалось найти элемент: {element} из формулы {formula}")
+            return None
+    print(f"Для компонента {formula} молярная масса {total_mass / 1000}")
+    return total_mass / 1000
+
 
 # Тут просто добавляем или удаляем необходимые материалы
 if verify_TERRA:
     df_terra_01 = pd.read_excel(r'D:\YASIM\VORON\2025_08_KEROSENE_PROPS\terra_results_SI.xlsx', index_col='   T', header=1)
     df_terra_01.columns = df_terra_01.columns.str.strip()
+
+    # Множество столбцов, которые не являются компонентами
+    names_not_components = {'m_total', 'p', 'T', 'v', 'S', 'I', 'U', 'M', 'Cp', 'k', 'Cp\'', 'k\'', 'Ap', 'Bv', 'Gt', 'MMg', 'Rg', 'Cpg', 'kg', 'Cp\'g', 'k\'g', 'Mu', 'Lt', 'Lt\'', 'Pr', 'Pr\'', 'A', 'z'}
+
+    # Этап 1: Переименование столбцов (добавление префикса Y_)
     new_columns = []
     for col in df_terra_01.columns:
-        if col not in {'p', 'T', 'v', 'S', 'I', 'U', 'M', 'Cp', 'k', 'Cp\'', 'k\'', 'Ap', 'Bv', 'Gt', 'MMg', 'Rg', 'Cpg', 'kg', 'Cp\'g', 'k\'g', 'Mu', 'Lt', 'Lt\'', 'Pr', 'Pr\'', 'A', 'z'}:
+        if col not in names_not_components:
             new_columns.append(f'Y_{col}')
-            df_terra_01[col] = df_terra_01[col] / terra_Y_norm_factor
         else:
             new_columns.append(col)
     df_terra_01.columns = new_columns
-    df_terra_01 = df_terra_01.rename(columns={'Cp\'': 'Cp [J/kg-K]', 'I': 'H [J/kg]', 'MMg': 'M [g/mol]', 'Rg': 'R [J/kg-K]', 'Mu': 'Mu_visc [kg/m-s]', 'Lt': 'Lambda [W/m-K]'})
-    df_terra_01['Cp [J/kg-K]'] = df_terra_01['Cp [J/kg-K]']*1000
-    df_terra_01['H [J/kg]'] = df_terra_01['H [J/kg]']*1000
 
+    # Этап 2: Расчёт масс компонентов и общей массы
+    mass_columns = []
+    for col in df_terra_01.columns:
+        if col.startswith('Y_'):
+            component_name = col[2:]  # Убираем префикс Y_
+            M = get_molar_mass(component_name)  # Молярная масса компонента
+            if M is not None:
+                # print(f'Molar mass for {component_name} is {M:.6f} kg/mol')
+                mass_col = f'm_{component_name}'
+                df_terra_01[mass_col] = df_terra_01[col] * M  # Масса компонента
+                mass_columns.append(mass_col)
 
+    # Суммируем массы всех компонентов по строкам
+    df_terra_01['m_total'] = df_terra_01[mass_columns].sum(axis=1)
 
+    # Этап 3: Расчёт массовых долей
+    for col in df_terra_01.columns:
+        if col.startswith('Y_'):
+            component_name = col[2:]
+            mass_col = f'm_{component_name}'
+            df_terra_01[col] = df_terra_01[mass_col] / df_terra_01['m_total']
+
+    # Удаляем временные столбцы с массами
+    df_terra_01 = df_terra_01.drop(columns=mass_columns)
+
+    # Переименование столбцов
+    df_terra_01 = df_terra_01.rename(columns={
+        'Cp\'': 'Cp [J/kg-K]',
+        'I': 'H [J/kg]',
+        'MMg': 'M [g/mol]',
+        'Rg': 'R [J/kg-K]',
+        'Mu': 'Mu_visc [kg/m-s]',
+        'Lt': 'Lambda [W/m-K]'
+    })
+
+    # Умножаем значения
+    df_terra_01['Cp [J/kg-K]'] = df_terra_01['Cp [J/kg-K]'] * 1000
+    df_terra_01['H [J/kg]'] = df_terra_01['H [J/kg]'] * 1000
 
 
 path_run = ''.join((path, '/', dir_run))
