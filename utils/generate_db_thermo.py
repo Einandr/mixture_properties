@@ -84,19 +84,65 @@ def generate_db_thermo(dir_thermo, file_thermo, dir_output, file_output):
 
         sp_previous_number = 0
 
-        for ind, row in enumerate(f):
-            if ind == 1:
-                temp_range_list = row.split()
-            sp_current_number = (ind - 2) // 4
+        effective_ind = 0
 
-            if (ind - 2) % 4 == 0 and row.strip() != 'END':
-                name = row[:16].strip()
-                date_string = ''.join((row[18:20], ' ', row[20:22], ' ', row[22:24]))
-                try:
-                    date = datetime.strptime(date_string, '%d %m %y').date()
-                except ValueError:
-                    date = 'None'
-                    print('No date information for current species')
+        for ind, row in enumerate(f):
+            if row.startswith('!') or not row.strip():
+                continue
+
+            if effective_ind == 1:
+                temp_range_list = row.split()
+            sp_current_number = (effective_ind - 2) // 4
+
+            if (effective_ind - 2) % 4 == 0 and row.strip().upper() != 'END':
+                name_data = row[:24].strip()
+
+                # Извлекаем имя: всё до первого пробела или до начала даты
+                name = name_data.split()[0].upper()
+
+                # Извлекаем дату: ищем паттерн MM/DD/YY или M/D/YY
+                date_pattern = re.compile(r'(\d{1,2})[ /]+(\d{1,2})[ /]+(\d{1,2})')
+                date_match = date_pattern.search(row)
+                if date_match:
+                    month, day, year = date_match.groups()
+                    # Дополняем год до 4 цифр (например, 95 -> 1995, 0 -> 2000)
+                    year = int(year)
+                    if year < 50:
+                        year += 2000
+                    else:
+                        year += 1900
+                    try:
+                        date = datetime(year=year, month=int(month), day=int(day)).date()
+                    except ValueError:
+                        date = 'None'
+                        print('No date information for current species')
+                else:
+                    # Ищем шестизначное число (MMDDYY)
+                    date_number_pattern = re.compile(r'(\d{2})(\d{2})(\d{2})')
+                    date_number_match = date_number_pattern.search(row)
+                    if date_number_match:
+                        month, day, year = date_number_match.groups()  # Порядок: день, месяц, год
+                        year = int(year)
+                        if year < 50:
+                            year += 2000
+                        else:
+                            year += 1900
+                        try:
+                            date = datetime(year=year, month=int(month), day=int(day)).date()
+                        except ValueError:
+                            date = 'None'
+                            print('No date information for current species')
+                    else:
+                        date = 'None'
+                        print('No date information for current species')
+
+                # date_string = ''.join((row[18:20], ' ', row[20:22], ' ', row[22:24]))
+                # try:
+                #     date = datetime.strptime(date_string, '%d %m %y').date()
+                # except ValueError:
+                #     date = 'None'
+                #     print('No date information for current species')
+
                 if '&' not in row:
                     print('ROW IS', row)
                     formula_01 = _parse_formula(row[24:29])
@@ -133,19 +179,19 @@ def generate_db_thermo(dir_thermo, file_thermo, dir_output, file_output):
                 t_high = float(row[55:65].strip())
                 t_mid = float(row[65:73].strip())
                 atomic = _safe_str_to_Nan_convertion(row[73:78].strip())
-            if (ind - 2) % 4 == 1:
+            if (effective_ind - 2) % 4 == 1:
                 a1_high = float(row[0:15])
                 a2_high = float(row[15:30])
                 a3_high = float(row[30:45])
                 a4_high = float(row[45:60])
                 a5_high = float(row[60:75])
-            if (ind - 2) % 4 == 2 and ind > 2:
+            if (effective_ind - 2) % 4 == 2 and effective_ind > 2:
                 a6_high = float(row[0:15])
                 a7_high = float(row[15:30])
                 a1_low = float(row[30:45])
                 a2_low = float(row[45:60])
                 a3_low = float(row[60:75])
-            if (ind - 2) % 4 == 3 and ind > 2:
+            if (effective_ind - 2) % 4 == 3 and effective_ind > 2:
                 a4_low = float(row[0:15])
                 a5_low = float(row[15:30])
                 a6_low = float(row[30:45])
@@ -168,6 +214,8 @@ def generate_db_thermo(dir_thermo, file_thermo, dir_output, file_output):
                     print('a not defined yet')
                 print(a_all)
                 print(row.strip(), len(row), ind)
+
+            effective_ind += 1
 
     for item in temp_range_list:
         temp_range.append(float(item))

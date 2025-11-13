@@ -14,18 +14,20 @@ path = r'D:\YASIM\VORON\2025_08_KEROSENE_PROPS'
 
 # Пути к результатам расчета в CHEMKIN EQUILIBRIUM
 dir_chemkin_equilibrium_solution = 'CHEMKIN'
-file_chemkin_equilibrium_solution = 'Dagaut_original.xlsx'
+file_chemkin_equilibrium_solution = 'propane_HIGH_NOX.xlsx'
 dir_run = 'RUN_chemkin_equilibrium'
 
 # Пути к кинетике
-chemkin_path = r'D:\YASIM\!Chemical_Kinetics\ker_Dagaut'
-chemkin_thermo = 'thermDagaut.dat'
-chemkin_transport = 'transpDagaut.dat'
-chemkin_reactions = 'Dagaut_Ori.inp.txt'
-generate_new_db_thermo = False
-generate_new_db_transport = False
+path_data = r'D:\YASIM\!Chemical_Kinetics'
+terra_props = 'props_TERRA.txt'
+chemkin_path = 'propane'
+chemkin_thermo = 'CRECK_2003_C1_C3_HT_NOX_thermo.dat'
+chemkin_transport = 'CRECK_2003_C1_C3_HT_NOX_transport.dat'
+chemkin_reactions = 'CRECK_2003_C1_C3_HT_NOX.CKI'       # not used
+generate_new_db_thermo = True
+generate_new_db_transport = True
 
-path_data = ''.join((os.getcwd(), '\\', 'data'))
+
 terra_props = 'props_TERRA.txt'
 
 path_run = ''.join((path, '/', dir_run))
@@ -52,6 +54,19 @@ df['Cp [J/kg-K]'] = df['Equilibrium_Enthalpy_(J/kg)'].diff() / df['Equilibrium_T
 df.loc[0, 'Cp [J/kg-K]'] = df.loc[1, 'Cp [J/kg-K]']
 
 
+def capitalize_chemical_formula(column_name):
+    if column_name.startswith(('Y_', 'Y_in_')):
+        parts = column_name.split('_')
+        if len(parts) >= 2:
+            formula_part = parts[-1]
+            parts[-1] = formula_part.upper()
+        return '_'.join(parts)
+    else:
+        return column_name
+
+
+df.columns = [capitalize_chemical_formula(col) for col in df.columns]
+
 equilibrium_columns = [col for col in df.columns if col.startswith('Y_') and not col.startswith('Y_in_')]
 gas_mixture_reference = {}
 for component in equilibrium_columns:
@@ -66,9 +81,9 @@ print('Компоненты в равновесной смеси:\n', equilibriu
 
 # Создаем файлы БД в той же директории, где находится файлы CHEMKIN THERMO, CHEMKIN TRANSPORT
 if generate_new_db_thermo:
-    generate_db_thermo(chemkin_path, chemkin_thermo, chemkin_path, chemkin_thermo.replace('.dat', '.db'))
+    generate_db_thermo(''.join((path_data, '\\', chemkin_path)), chemkin_thermo, ''.join((path_data, '\\', chemkin_path)), chemkin_thermo.replace('.dat', '.db'))
 if generate_new_db_transport:
-    generate_db_transport(chemkin_path, chemkin_transport, chemkin_path, chemkin_transport.replace('.dat', '.db'))
+    generate_db_transport(''.join((path_data, '\\', chemkin_path)), chemkin_transport, ''.join((path_data, '\\', chemkin_path)), chemkin_transport.replace('.dat', '.db'))
 
 
 show_plots = True
@@ -110,7 +125,7 @@ components_with_source_C = material.get_components_by_source(gas_mixture_referen
 
 # Инициализация химической кинетики
 os.chdir(path_run)
-components_chemkin = kin.initiate_kinetics(''.join((chemkin_path, '\\', chemkin_thermo.replace('.dat', '.db'))), components_with_source_C, show_plots=show_plots, T_last=T_last, path_db_transport=''.join((chemkin_path, '\\', chemkin_transport.replace('.dat', '.db'))))
+components_chemkin = kin.initiate_kinetics(''.join((path_data, '\\', chemkin_path, '\\', chemkin_thermo.replace('.dat', '.db'))), components_with_source_C, show_plots=show_plots, T_last=T_last, path_db_transport=''.join((path_data, '\\', chemkin_path, '\\', chemkin_transport.replace('.dat', '.db'))))
 
 # material initialization
 gas_material = material.Material(gas_mixture_reference, 'mat_gas', df_terra, components_chemkin, show_plots, True, T0, T_base, dT_phase_transition, T_first, T_last, dT)

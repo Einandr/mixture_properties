@@ -45,7 +45,7 @@ def generate_db_transport(dir_thransport, file_transport, dir_output, file_outpu
             if len(parts) < 7:
                 continue
 
-            name = parts[0]
+            name = parts[0].upper()
             try:
                 geom_index = int(parts[1])                                  # If the index is 0, the molecule is a single atom. If the index is 1 the molecule is linear, and if it is 2, the molecule is nonlinear.
                 L_J_potential_well_depth = float(parts[2])                  # Kelvins

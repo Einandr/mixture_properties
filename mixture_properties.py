@@ -33,12 +33,14 @@ dir_run = 'RUN_mixture_properties'
 dir_props_out = 'props_out'
 dir_solution = 'solution'
 
-path_data = ''.join((os.getcwd(), '\\', 'data'))
+# path_data = ''.join((os.getcwd(), '\\', 'data'))
+path_data = r'D:\YASIM\!Chemical_Kinetics'
+
 terra_props = 'props_TERRA.txt'
-chemkin_path = 'ker_mixture'
-chemkin_thermo = 'thermDagaut.dat'
-chemkin_transport = 'transpDagaut.dat'
-chemkin_reactions = 'ker_mixture.inp'
+chemkin_path = 'propane'
+chemkin_thermo = 'CRECK_2003_C1_C3_HT_NOX_thermo.dat'
+chemkin_transport = 'CRECK_2003_C1_C3_HT_NOX_transport.dat'
+chemkin_reactions = 'CRECK_2003_C1_C3_HT_NOX.CKI'       # not used
 generate_new_db_thermo = False
 generate_new_db_transport = False
 
@@ -78,7 +80,13 @@ g_H2O = {'H2O': material.Component(1, material.Source.T)}
 g_C6H14 = {'C6H14': material.Component(1, material.Source.T)}
 g_C10H22 = {'C10H22': material.Component(1, material.Source.T)}
 g_C6H6 = {'C6H6': material.Component(1, material.Source.T)}
-g_C7H16 = {'C7H16': material.Component(1, material.Source.T)}
+# g_C7H16 = {'C7H16': material.Component(1, material.Source.T)}
+
+g_C3H8 = {'C3H8': material.Component(1, material.Source.C)}
+
+g_C7H16 = {'NC7H16': material.Component(0.5, material.Source.C),
+           'C4H5': material.Component(0.5, material.Source.C)}
+
 g_C9H12 = {'C9H12': material.Component(1, material.Source.T)}
 g_C9H18 = {'C9H18': material.Component(1, material.Source.T)}
 
@@ -94,21 +102,25 @@ g_BHD = {'C6H14': material.Component(0.091, material.Source.T),
 # }
 
 # DAGAUT
-# g_KERO = {
-#     'NC10H22': material.Component(0.74, material.Source.C),
-#     'PHC3H7': material.Component(0.15, material.Source.C),
-#     'CYC9H18': material.Component(0.11, material.Source.C)
-# }
-
-# TEST
 g_KERO = {
-    'C7H1335': material.Component(0.2, material.Source.C),
-    'C7H1313': material.Component(0.2, material.Source.C),
-    'C7H1324': material.Component(0.2, material.Source.C),
-    'C7H1314': material.Component(0.2, material.Source.C),
-    'C7H1347': material.Component(0.2, material.Source.C)
+    'NC10H22': material.Component(0.74, material.Source.C),
+    'PHC3H7': material.Component(0.15, material.Source.C),
+    'CYC9H18': material.Component(0.11, material.Source.C)
 }
 
+# TEST
+# g_KERO = {
+#     'C7H1335': material.Component(0.2, material.Source.C),
+#     'C7H1313': material.Component(0.2, material.Source.C),
+#     'C7H1324': material.Component(0.2, material.Source.C),
+#     'C7H1314': material.Component(0.2, material.Source.C),
+#     'C7H1347': material.Component(0.2, material.Source.C)
+# }
+
+g_air_simple = {
+    'O2': material.Component(0.2315, material.Source.C),
+    'N2': material.Component(0.7685, material.Source.C)
+}
 
 
 # g_KERO = {'C10H20 KERO': material.Component(1, material.Source.C)}
@@ -123,9 +135,8 @@ g_KERO = {
 # 'C9H12  propylben'
 
 
-gas_mixture_reference = {'O2': g_O2,
-                         'N2': g_N2,
-                         'CO2': g_CO2}
+# gas_mixture_reference = {'O2': g_O2,
+#                          'N2': g_N2}
 
 # gas_mixture_reference = {'O2': g_O2,
 #                          'N2': g_N2,
@@ -141,8 +152,13 @@ gas_mixture_reference = {'O2': g_O2,
 #                          'KERO': g_KERO,
 #                          'C7H16': g_C7H16}
 
-gas_mixture_reference = {'KERO': g_KERO}
+# gas_mixture_reference = {'KERO': g_KERO}
 
+# gas_mixture_reference = {'g_air_simple': g_air_simple}
+
+# gas_mixture_reference = {'n-heptane-chemkin': g_C7H16}
+
+gas_mixture_reference = {'propane-chemkin': g_C3H8}
 
 
 show_plots = True

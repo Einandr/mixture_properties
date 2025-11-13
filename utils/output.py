@@ -149,7 +149,7 @@ def output_props(name, is_gas, T_base, T0, df, df_constants):
             ('heat_capacity', 'Cp [J/kg-K]'),
             ('viscosity', 'Mu_visc [kg/m-s]'),
             ('heat_conductivity', 'Lambda [W/m-K]'),
-            ('diffusivity', 'D [m^2/s]')
+            ('mass_diffusivity', 'D [m^2/s]')
         ])
 
     props_for_yaml = CommentedMap()
@@ -308,7 +308,7 @@ def output_props(name, is_gas, T_base, T0, df, df_constants):
 
         str_start_diffusivity = ''.join(('/define/materials/change-create/', name, ' mixture-template n n n y piecewise-linear '))
         str_end_diffusivity = ' n\n'
-        prop_diffusivity = get_prop_from_yaml(props_for_yaml['diffusivity'], str_start_diffusivity, str_end_diffusivity, '.000001')
+        prop_diffusivity = get_prop_from_yaml(props_for_yaml['mass_diffusivity'], str_start_diffusivity, str_end_diffusivity, '.000001')
 
 
         with open(''.join(('g_fluent_', name, '.jou')), 'w') as f:

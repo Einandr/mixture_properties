@@ -30,8 +30,8 @@ dir_run = 'RUN_materials_verification'
 
 # Тут просто добавляем или удаляем необходимые материалы
 if verify_CHEMKIN:
-    df_chemkin_01 = pd.read_excel(r'D:\YASIM\VORON\2025_08_KEROSENE_PROPS\RUN_chemkin_equilibrium\material_selected_properties.xlsx', index_col='T [K]')
-    df_chemkin_02 = pd.read_excel(r'D:\YASIM\VORON\2025_08_KEROSENE_PROPS\RUN_chemkin_equilibrium\material_with_properties.xlsx', index_col='T [K]')
+    df_chemkin_01 = pd.read_excel(r'D:\YASIM\VORON\2025_08_KEROSENE_PROPS\RUN_chemkin_equilibrium\propane\material_selected_properties.xlsx', index_col='T [K]')
+    df_chemkin_02 = pd.read_excel(r'D:\YASIM\VORON\2025_08_KEROSENE_PROPS\RUN_chemkin_equilibrium\propane\material_with_properties.xlsx', index_col='T [K]')
 
 
 def get_molar_mass(formula):
@@ -53,11 +53,11 @@ def get_molar_mass(formula):
 
 # Тут просто добавляем или удаляем необходимые материалы
 if verify_TERRA:
-    df_terra_01 = pd.read_excel(r'D:\YASIM\VORON\2025_08_KEROSENE_PROPS\terra_results_SI.xlsx', index_col='   T', header=1)
+    df_terra_01 = pd.read_excel(r'D:\YASIM\VORON\2025_08_KEROSENE_PROPS\terra_propane.xlsx', index_col='   T', header=1)
     df_terra_01.columns = df_terra_01.columns.str.strip()
 
     # Множество столбцов, которые не являются компонентами
-    names_not_components = {'m_total', 'p', 'T', 'v', 'S', 'I', 'U', 'M', 'Cp', 'k', 'Cp\'', 'k\'', 'Ap', 'Bv', 'Gt', 'MMg', 'Rg', 'Cpg', 'kg', 'Cp\'g', 'k\'g', 'Mu', 'Lt', 'Lt\'', 'Pr', 'Pr\'', 'A', 'z'}
+    names_not_components = {'m_total', 'p', 'T', 'v', 'S', 'I', 'U', 'M', 'Cp', 'k', 'Cp\'', 'k\'', 'Ap', 'Bv', 'Gt', 'MMg', 'Rg', 'Cpg', 'kg', 'Cp\'g', 'k\'g', 'Mu', 'Lt', 'Lt\'', 'Pr', 'Pr\'', 'A', 'z', 'Bm'}
 
     # Этап 1: Переименование столбцов (добавление префикса Y_)
     new_columns = []
@@ -247,7 +247,8 @@ if verify_CHEMKIN and verify_TERRA:
                                                          (df_terra_01, ['R [J/kg-K]'], [style_T], ['TERRA - R'], [0, 80], [0.9], [-0.3], [-0.1])))
     plot_result('08_Y', r'$Y$', ((df_chemkin_02, ['Y_H2O', 'Y_CO2', 'Y_CO'], [style_C, style_C, style_C], ['CHEMKIN - массовая доля H2O', 'CHEMKIN - массовая доля CO2', 'CHEMKIN - массовая доля CO'], [0, 1], [0.1, 0.1, 0.1], [0.1, 0.1, 0.1], [-0.1, -0.1, 0.1]),
                                  (df_terra_01, ['Y_H2O', 'Y_CO2', 'Y_CO'], [style_T, style_T, style_T], ['TERRA - массовая доля H2O', 'TERRA - массовая доля CO2', 'TERRA - массовая доля CO'], [0, 1], [0.1, 0.1, 0.1], [0.1, 0.1, 0.1], [-0.1, -0.1, 0.1])))
-
+    plot_result('09_Y', r'$Y$', ((df_chemkin_02, ['Y_NO', 'Y_OH', 'Y_CO', 'Y_H', 'Y_O'], [style_C, style_C, style_C, style_C, style_C], ['C - NO', 'C - OH', 'C - CO', 'C - H', 'C - O'], [0, 1], [0.1, 0.1, 0.1, 0.1, 0.1], [0.1, 0.1, 0.1, 0.1, 0.1], [-0.1, -0.1, 0.1, 0.1, 0.1]),
+                                 (df_terra_01, ['Y_NO', 'Y_OH', 'Y_CO', 'Y_H', 'Y_O'], [style_T, style_T, style_T, style_T, style_T], ['T - NO', 'T - OH', 'T - CO', 'T - H', 'T - O'], [0, 1], [0.1, 0.1, 0.1, 0.1, 0.1], [0.1, 0.1, 0.1, 0.1, 0.1], [-0.1, -0.1, 0.1, 0.1, 0.1])))
 
 
 

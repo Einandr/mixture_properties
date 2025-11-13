@@ -43,7 +43,8 @@ class Component:
         self.mu = 0                                                         # [г/моль]
         print('test sp_components:', self.sp_components, self.sp_moles)
         for ind, x in enumerate(self.sp_components):
-            self.el = element(x)
+            # print('debug current element:', x)
+            self.el = element(x.capitalize())
             self.moles = float(self.sp_moles[ind])
             self.mu += self.el.atomic_weight * self.moles
         self.R = R0 / self.mu * 1000                                        # [Дж/(кг-К)]
@@ -88,7 +89,7 @@ class Component:
         # self.data_properties_T_dependent.drop(index=0, inplace=True)
         self.writer = pd.ExcelWriter(''.join(('out_', self.name, '.xlsx')), engine="xlsxwriter")
         self.data_properties_T_dependent.to_excel(self.writer, index=False, sheet_name='props')
-        self.data_properties_constant = pd.DataFrame(data=[[self.mu, self.dH0, self.eps_dk, self.sigma]], index=[self.name], columns=['M [kg/mol]', 'dH0 [J/kg]', 'eps_dk [Kelvins]', 'sigma [angstroms]'])
+        self.data_properties_constant = pd.DataFrame(data=[[self.mu/1000, self.dH0, self.eps_dk, self.sigma]], index=[self.name], columns=['M [kg/mol]', 'dH0 [J/kg]', 'eps_dk [Kelvins]', 'sigma [angstroms]'])
         self.data_properties_constant.to_excel(self.writer, index=False, sheet_name='constant_props')
         self.writer.close()
         if self.show_plots:
@@ -255,7 +256,7 @@ class Component:
 
     # self-diffusivity [m^2/s]
     def _diffusivity_kinetic_theory(self, T):
-        return 0.00186 * pow(pow(T, 3) * (1 / self.mu + 1 / self.mu), 0.5) / (pow(self.sigma, 2) * self._theta_diffusivity(T))
+        return 0.00186 * pow(pow(T, 3) * (1 / self.mu + 1 / self.mu), 0.5) / (pow(self.sigma, 2) * self._theta_diffusivity(T)) * 0.0001
 
 
     # Эти методы должны быть с теми же названиями, что для component_terra
